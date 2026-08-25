@@ -34,3 +34,30 @@ Feature: Edit account data
     And they clear required fields
     And they save the changes
     Then the required fields should not be empty
+
+  Scenario: Wrong current password is rejected
+    When they activate the password form
+    And they enter a wrong current password
+    And they save the password changes
+    Then the password error message is displayed
+
+  Scenario: Mismatched new passwords are rejected
+    When they activate the password form
+    And they enter mismatched new passwords
+    And they save the password changes
+    Then the password error message is displayed
+
+  Scenario: New password must differ from current
+    When they activate the password form
+    And they enter the same password as current
+    And they save the password changes
+    Then the password error message is displayed
+
+  # --- Success last (changes password) ---
+
+  Scenario: Change password successfully
+    When they activate the password form
+    And they enter their current password and a new password
+    And they save the password changes
+    Then the password is changed and they are redirected
+    And the new password works for re-login

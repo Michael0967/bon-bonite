@@ -15,7 +15,9 @@ function resolveHeadless(): boolean {
 export const config = {
   baseUrl: process.env.BB_BASE_URL ?? 'https://www.bon-bonite.com',
   testPassword: process.env.BB_TEST_PASSWORD ?? '',
+  newPassword: process.env.BB_NEW_PASSWORD ?? '',
   existingEmail: process.env.BB_EXISTING_EMAIL ?? '',
+  hackedEmail: process.env.BB_HACKED_EMAIL ?? '',
   existingIdNumber: process.env.BB_EXISTING_ID_NUMBER ?? '',
   browser: resolveEngine(),
   headless: resolveHeadless(),

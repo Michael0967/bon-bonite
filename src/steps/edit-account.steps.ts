@@ -10,9 +10,19 @@ Given(
   async function (this: BonboniteWorld): Promise<void> {
     const loginPage = new LoginPage(this.page);
     await loginPage.open();
-    await loginPage.fillCredentials(config.existingIdNumber, config.testPassword);
+
+    // Try new password first (in case it was changed in a previous run)
+    await loginPage.fillCredentials(config.existingIdNumber, config.newPassword);
     await loginPage.submit();
-    await loginPage.accountNavigation.waitFor({ state: 'visible' });
+    const navVisible = await loginPage.accountNavigation.isVisible({ timeout: 5_000 }).catch(() => false);
+
+    if (!navVisible) {
+      // Fallback to original password
+      await loginPage.open();
+      await loginPage.fillCredentials(config.existingIdNumber, config.testPassword);
+      await loginPage.submit();
+      await loginPage.accountNavigation.waitFor({ state: 'visible' });
+    }
 
     const editPage = new EditAccountPage(this.page);
     await editPage.open();
@@ -48,7 +58,7 @@ When(
   'they try to change their email address',
   async function (this: BonboniteWorld): Promise<void> {
     const editPage = new EditAccountPage(this.page);
-    await editPage.fillField('email', 'hacked@evil.com');
+    await editPage.fillField('email', config.hackedEmail);
   },
 );
 
@@ -66,7 +76,55 @@ When(
   'they save the changes',
   async function (this: BonboniteWorld): Promise<void> {
     const editPage = new EditAccountPage(this.page);
-    await editPage.submit();
+    await editPage.submitInfo();
+  },
+);
+
+When(
+  'they activate the password form',
+  async function (this: BonboniteWorld): Promise<void> {
+    const editPage = new EditAccountPage(this.page);
+    await editPage.revealPasswordForm();
+  },
+);
+
+When(
+  'they enter their current password and a new password',
+  async function (this: BonboniteWorld): Promise<void> {
+    const editPage = new EditAccountPage(this.page);
+    await editPage.fillPasswordForm(config.testPassword, config.newPassword, config.newPassword);
+  },
+);
+
+When(
+  'they enter a wrong current password',
+  async function (this: BonboniteWorld): Promise<void> {
+    const editPage = new EditAccountPage(this.page);
+    await editPage.fillPasswordForm('WrongPass999', config.newPassword, config.newPassword);
+  },
+);
+
+When(
+  'they enter mismatched new passwords',
+  async function (this: BonboniteWorld): Promise<void> {
+    const editPage = new EditAccountPage(this.page);
+    await editPage.fillPasswordForm(config.testPassword, config.newPassword, 'DifferentPass999');
+  },
+);
+
+When(
+  'they enter the same password as current',
+  async function (this: BonboniteWorld): Promise<void> {
+    const editPage = new EditAccountPage(this.page);
+    await editPage.fillPasswordForm(config.testPassword, config.testPassword, config.testPassword);
+  },
+);
+
+When(
+  'they save the password changes',
+  async function (this: BonboniteWorld): Promise<void> {
+    const editPage = new EditAccountPage(this.page);
+    await editPage.submitPassword();
   },
 );
 
@@ -75,7 +133,7 @@ Then(
   async function (this: BonboniteWorld): Promise<void> {
     const editPage = new EditAccountPage(this.page);
     await expect(editPage.profileMessage).toBeVisible();
-    const text = await editPage.successMessage();
+    const text = await editPage.profileSuccessMessage();
     expect(text).toContain('Datos personales actualizados correctamente');
   },
 );
@@ -101,5 +159,37 @@ Then(
     expect(firstName).toBeTruthy();
     expect(lastName).toBeTruthy();
     expect(email).toBeTruthy();
+  },
+);
+
+Then(
+  'the password error message is displayed',
+  async function (this: BonboniteWorld): Promise<void> {
+    const editPage = new EditAccountPage(this.page);
+    await expect(editPage.passwordMessage).toBeVisible();
+  },
+);
+
+Then(
+  'the password is changed and they are redirected',
+  async function (this: BonboniteWorld): Promise<void> {
+    await this.page.waitForURL(/\/mi-cuenta\//, { timeout: 10_000 });
+    const currentUrl = this.page.url();
+    expect(currentUrl).toContain('/mi-cuenta/');
+  },
+);
+
+Then(
+  'the new password works for re-login',
+  async function (this: BonboniteWorld): Promise<void> {
+    // Clear cookies to force logout
+    await this.page.context().clearCookies();
+
+    const loginPage = new LoginPage(this.page);
+    await loginPage.open();
+    await loginPage.fillCredentials(config.existingIdNumber, config.newPassword);
+    await loginPage.submit();
+    await loginPage.accountNavigation.waitFor({ state: 'visible' });
+    await expect(loginPage.errorMessage).toHaveCount(0);
   },
 );
