@@ -16,4 +16,11 @@ module.exports = {
     retry: 1,
     parallel: workers,
   },
+  sequential: {
+    import: ['dist/**/*.js'],
+    format: ['summary', 'json:test-results/cucumber.json'],
+    formatOptions: { snippetInterface: 'async-await' },
+    retry: 0,
+    parallel: 0,
+  },
 };
