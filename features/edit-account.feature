@@ -61,3 +61,72 @@ Feature: Edit account data
     And they save the password changes
     Then the password is changed and they are redirected
     And the new password works for re-login
+
+  # --- Address: billing happy paths ---
+
+  Scenario: Save billing address with valid data
+    When they open the billing address modal
+    And they fill the billing address with valid data
+    And they save the billing address
+    Then the billing address is saved successfully
+
+  Scenario: Delete billing address
+    When they open the billing address modal
+    And they fill the billing address with valid data
+    And they save the billing address
+    And they delete the billing address
+    Then the billing address is removed
+
+  # --- Address: billing bugs ---
+
+  Scenario: Billing delete button should not be visible without address data
+    Then the billing delete button should not be visible
+
+  Scenario: Billing edit button should say Add when no address exists
+    Then the billing edit button should say Add
+
+  Scenario: Billing address cannot be saved with empty required fields
+    When they open the billing address modal
+    And they clear the billing address fields
+    And they save the billing address
+    Then a validation error is displayed
+
+  Scenario: Billing phone field should reject non-numeric characters
+    When they open the billing address modal
+    And they enter non-numeric characters in the billing phone field
+    And they save the billing address
+    Then a validation error is displayed
+
+  Scenario: Billing city dropdown should have city options
+    When they open the billing address modal
+    Then the billing city dropdown should have city options
+
+  Scenario: Billing email should pre-fill from account
+    When they open the billing address modal
+    Then the billing email field should be pre-filled
+
+  # --- Address: shipping happy paths ---
+
+  Scenario: Save shipping address with valid data
+    When they open the shipping address modal
+    And they fill the shipping address with valid data
+    And they save the shipping address
+    Then the shipping address is saved successfully
+
+  Scenario: Delete shipping address
+    When they open the shipping address modal
+    And they fill the shipping address with valid data
+    And they save the shipping address
+    And they delete the shipping address
+    Then the shipping address is removed
+
+  # --- Address: shipping bugs ---
+
+  Scenario: Shipping delete button should not be visible without address data
+    Then the shipping delete button should not be visible
+
+  Scenario: Shipping address cannot be saved with empty required fields
+    When they open the shipping address modal
+    And they clear the shipping address fields
+    And they save the shipping address
+    Then a validation error is displayed

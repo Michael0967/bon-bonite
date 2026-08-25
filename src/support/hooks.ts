@@ -9,6 +9,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { closeBrowser, getBrowser } from './browser';
 import { config } from './config';
+import { loadSessionCookies, saveSessionCookies } from './session';
 import type { BonboniteWorld } from './world';
 
 setDefaultTimeout(config.stepTimeout);
@@ -34,6 +35,9 @@ Before(async function (this: BonboniteWorld): Promise<void> {
     baseURL: config.baseUrl,
     viewport: config.viewport,
   });
+
+  const hasCookies = await loadSessionCookies(this.context);
+
   await this.context.addCookies([
     {
       name: 'CookieScriptConsent',
@@ -44,9 +48,12 @@ Before(async function (this: BonboniteWorld): Promise<void> {
       sameSite: 'Lax',
     },
   ]);
+
   this.page = await this.context.newPage();
   this.page.setDefaultTimeout(config.actionTimeout);
   this.page.setDefaultNavigationTimeout(config.navigationTimeout);
+
+  this.userData.hasSessionCookies = hasCookies;
 
   if (config.trace) {
     await this.context.tracing.start({ screenshots: true, snapshots: true, sources: false });
@@ -57,6 +64,9 @@ Before(async function (this: BonboniteWorld): Promise<void> {
 After(async function (this: BonboniteWorld, { result }): Promise<void> {
   const failed = result?.status === Status.FAILED;
   try {
+    if (this.page) {
+      await saveSessionCookies(this.context);
+    }
     if (failed && this.page) {
       await this.attach(await this.page.screenshot({ fullPage: true }), 'image/png');
     }

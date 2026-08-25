@@ -1,4 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
+import { humanDelay, humanClick, humanType } from '../support/humanize';
 
 const SELECTORS = {
   usernameInput: '#username',
@@ -39,6 +40,7 @@ export class LoginPage {
     const maxAttempts = 3;
     let lastStatus: number | undefined;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await humanDelay(500, 1500);
       const response =
         attempt === 1
           ? await this.page.goto('/mi-cuenta/')
@@ -49,7 +51,7 @@ export class LoginPage {
         .then(() => true)
         .catch(() => false);
       if (formReady) return;
-      await new Promise((resolve) => setTimeout(resolve, 2_000 * attempt));
+      await humanDelay(2000 * attempt, 3000 * attempt);
     }
     throw new Error(
       `/mi-cuenta/ did not load correctly after ${maxAttempts} attempts (last HTTP status: ${lastStatus ?? 'unknown'}). The site WAF may be rate limiting this IP.`,
@@ -62,19 +64,22 @@ export class LoginPage {
   }
 
   async fillCredentials(idNumber: string, password: string): Promise<void> {
-    await this.usernameInput.fill(idNumber);
-    await this.passwordInput.fill(password);
+    await humanType(this.usernameInput, idNumber);
+    await humanDelay(300, 700);
+    await humanType(this.passwordInput, password);
+    await humanDelay(200, 500);
   }
 
   async submit(): Promise<void> {
-    await this.submitButton.click();
+    await humanClick(this.submitButton);
     const outcomeSettled = await Promise.race([
       this.errorMessage.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true),
       this.accountNavigation.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true),
     ]).catch(() => false);
 
     if (!outcomeSettled) {
-      await this.submitButton.click();
+      await humanDelay(1000, 2000);
+      await humanClick(this.submitButton);
     }
   }
 }

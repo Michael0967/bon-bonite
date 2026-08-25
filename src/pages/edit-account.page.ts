@@ -1,4 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
+import { humanDelay, humanClick, humanType } from '../support/humanize';
 
 const SELECTORS = {
   firstNameInput: '[name="first_name"]',
@@ -18,14 +19,60 @@ const SELECTORS = {
   passwordForm: '#password-form',
   passwordMessage: '#password-message',
   passwordMessageText: '#password-message-text',
+  addressModal: '#address-modal',
+  modalContent: '#address-modal .modal-content',
+  closeModal: '#address-modal .close-modal',
+  editAddressButton: 'button.edit-address-button',
+  deleteAddressButton: 'button.delete-address-button',
 } as const;
 
 const TEXT = {
   successMessage: 'Datos personales actualizados correctamente',
   accountNavigation: 'Páginas de cuenta',
+  saveAddress: 'Guardar dirección',
 } as const;
 
 export type ProfileField = 'firstName' | 'lastName' | 'birthDate' | 'email' | 'gender' | 'phone';
+export type AddressType = 'billing' | 'shipping';
+
+type AddressFieldName =
+  | 'firstName'
+  | 'lastName'
+  | 'email'
+  | 'country'
+  | 'state'
+  | 'address1'
+  | 'address2'
+  | 'phone'
+  | 'city'
+  | 'postcode';
+
+const ADDRESS_FIELDS: Record<AddressType, Partial<Record<AddressFieldName, string>>> = {
+  billing: {
+    firstName: '[name="billing_first_name"]',
+    lastName: '[name="billing_last_name"]',
+    email: '[name="billing_email"]',
+    country: '[name="billing_country"]',
+    state: '[name="billing_state"]',
+    address1: '[name="billing_address_1"]',
+    address2: '[name="billing_address_2"]',
+    phone: '[name="billing_phone"]',
+    city: '[name="billing_city"]',
+    postcode: '[name="billing_postcode"]',
+  },
+  shipping: {
+    firstName: '[name="shipping_first_name"]',
+    lastName: '[name="shipping_last_name"]',
+    email: '[name="shipping_email"]',
+    country: '[name="shipping_country"]',
+    state: '[name="shipping_state"]',
+    address1: '[name="shipping_address_1"]',
+    address2: '[name="shipping_address_2"]',
+    phone: '[name="shipping_phone"]',
+    city: '[name="shipping_city"]',
+    postcode: '[name="shipping_postcode"]',
+  },
+};
 
 export class EditAccountPage {
   readonly updateInfoButton: Locator;
@@ -36,6 +83,13 @@ export class EditAccountPage {
   readonly savePasswordButton: Locator;
   readonly passwordForm: Locator;
   readonly passwordMessage: Locator;
+  readonly editBillingButton: Locator;
+  readonly deleteBillingButton: Locator;
+  readonly editShippingButton: Locator;
+  readonly deleteShippingButton: Locator;
+  readonly addressModal: Locator;
+  readonly modalContent: Locator;
+  readonly closeModal: Locator;
 
   private readonly fields: Record<ProfileField, Locator>;
   private readonly currentPasswordInput: Locator;
@@ -64,12 +118,21 @@ export class EditAccountPage {
     this.currentPasswordInput = page.locator(SELECTORS.currentPasswordInput);
     this.newPasswordInput = page.locator(SELECTORS.newPasswordInput);
     this.confirmPasswordInput = page.locator(SELECTORS.confirmPasswordInput);
+
+    this.editBillingButton = page.locator(SELECTORS.editAddressButton).nth(0);
+    this.deleteBillingButton = page.locator(SELECTORS.deleteAddressButton).nth(0);
+    this.editShippingButton = page.locator(SELECTORS.editAddressButton).nth(1);
+    this.deleteShippingButton = page.locator(SELECTORS.deleteAddressButton).nth(1);
+    this.addressModal = page.locator(SELECTORS.addressModal);
+    this.modalContent = page.locator(SELECTORS.modalContent);
+    this.closeModal = page.locator(SELECTORS.closeModal);
   }
 
   async open(): Promise<void> {
     const maxAttempts = 3;
     let lastStatus: number | undefined;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await humanDelay(500, 1500);
       const response =
         attempt === 1
           ? await this.page.goto('/mi-cuenta/edit-account/')
@@ -80,7 +143,7 @@ export class EditAccountPage {
         .then(() => true)
         .catch(() => false);
       if (formReady) return;
-      await new Promise((resolve) => setTimeout(resolve, 2_000 * attempt));
+      await humanDelay(2000 * attempt, 3000 * attempt);
     }
     throw new Error(
       `/mi-cuenta/edit-account/ did not load after ${maxAttempts} attempts (last HTTP status: ${lastStatus ?? 'unknown'}).`,
@@ -88,45 +151,34 @@ export class EditAccountPage {
   }
 
   async revealForm(): Promise<void> {
-    await this.updateInfoButton.click();
+    await humanClick(this.updateInfoButton);
     await this.fields.firstName.waitFor({ state: 'visible' });
   }
 
   async revealPasswordForm(): Promise<void> {
-    await this.updatePasswordButton.click();
+    await humanClick(this.updatePasswordButton);
     await this.passwordForm.waitFor({ state: 'visible' });
   }
 
   async fillField(field: ProfileField, value: string): Promise<void> {
     const locator = this.fields[field];
+    await humanDelay(200, 500);
     const tag = await locator.evaluate((e) => e.tagName);
     if (tag === 'SELECT') {
       await locator.selectOption(value);
     } else {
-      await locator.fill(value);
+      await humanType(locator, value);
     }
+    await humanDelay(200, 400);
   }
 
   async clearField(field: ProfileField): Promise<void> {
+    await humanDelay(200, 500);
     await this.fields[field].fill('');
   }
 
   async getFieldValue(field: ProfileField): Promise<string> {
     return this.fields[field].inputValue();
-  }
-
-  async fillPasswordForm(current: string, newPw: string, confirm: string): Promise<void> {
-    await this.currentPasswordInput.fill(current);
-    await this.newPasswordInput.fill(newPw);
-    await this.confirmPasswordInput.fill(confirm);
-  }
-
-  async submitInfo(): Promise<void> {
-    await this.saveInfoButton.click();
-  }
-
-  async submitPassword(): Promise<void> {
-    await this.savePasswordButton.click();
   }
 
   async profileSuccessMessage(): Promise<string> {
@@ -135,5 +187,128 @@ export class EditAccountPage {
 
   async passwordSuccessMessage(): Promise<string> {
     return this.passwordMessage.textContent().then((t) => t?.trim() ?? '');
+  }
+
+  async fillPasswordForm(current: string, newPw: string, confirm: string): Promise<void> {
+    await humanType(this.currentPasswordInput, current);
+    await humanDelay(300, 700);
+    await humanType(this.newPasswordInput, newPw);
+    await humanDelay(300, 700);
+    await humanType(this.confirmPasswordInput, confirm);
+    await humanDelay(200, 500);
+  }
+
+  async submitInfo(): Promise<void> {
+    await humanClick(this.saveInfoButton);
+  }
+
+  async submitPassword(): Promise<void> {
+    await humanClick(this.savePasswordButton);
+  }
+
+  async openAddressModal(type: AddressType): Promise<void> {
+    const btn = type === 'billing' ? this.editBillingButton : this.editShippingButton;
+    await humanClick(btn);
+    await this.addressModal.waitFor({ state: 'visible' });
+    await humanDelay(300, 600);
+  }
+
+  async closeAddressModal(): Promise<void> {
+    await humanDelay(200, 500);
+    await humanClick(this.closeModal);
+    await this.addressModal.waitFor({ state: 'hidden' });
+  }
+
+  async fillAddress(type: AddressType, data: Partial<Record<AddressFieldName, string>>): Promise<void> {
+    for (const [field, value] of Object.entries(data) as [AddressFieldName, string][]) {
+      const selector = ADDRESS_FIELDS[type][field];
+      if (!selector) continue;
+      const locator = this.page.locator(selector);
+      await humanDelay(200, 500);
+      const tag = await locator.evaluate((e) => e.tagName);
+      if (tag === 'SELECT') {
+        const optionExists = await locator.locator(`option[value="${value}"]`).count() > 0;
+        if (!optionExists) continue;
+        await locator.selectOption(value);
+      } else {
+        await humanType(locator, value);
+      }
+      await humanDelay(200, 400);
+    }
+  }
+
+  async clearAddressFields(type: AddressType): Promise<void> {
+    const fields = ADDRESS_FIELDS[type];
+    for (const [field, selector] of Object.entries(fields)) {
+      if (!selector) continue;
+      const locator = this.page.locator(selector);
+      const exists = await locator.count() > 0;
+      if (!exists) continue;
+      await humanDelay(150, 400);
+      const tag = await locator.evaluate((e) => e.tagName);
+      if (tag === 'SELECT') {
+        await locator.selectOption('');
+      } else {
+        await locator.fill('');
+      }
+    }
+  }
+
+  async saveAddress(type: AddressType): Promise<void> {
+    const saveBtn = this.page.locator('button[name="save_address"]');
+    await humanClick(saveBtn);
+  }
+
+  async deleteAddress(type: AddressType): Promise<void> {
+    const btn = type === 'billing' ? this.deleteBillingButton : this.deleteShippingButton;
+    this.page.once('dialog', (dialog) => dialog.accept());
+    await humanDelay(500, 1000);
+    await btn.click();
+  }
+
+  async isDeleteButtonVisible(type: AddressType): Promise<boolean> {
+    const btn = type === 'billing' ? this.deleteBillingButton : this.deleteShippingButton;
+    return btn.isVisible();
+  }
+
+  async isAddressFieldVisible(type: AddressType, field: AddressFieldName): Promise<boolean> {
+    const selector = ADDRESS_FIELDS[type][field];
+    if (!selector) return false;
+    return this.page.locator(selector).isVisible().catch(() => false);
+  }
+
+  async getAddressFieldValue(type: AddressType, field: AddressFieldName): Promise<string> {
+    const selector = ADDRESS_FIELDS[type][field];
+    if (!selector) return '';
+    return this.page.locator(selector).inputValue();
+  }
+
+  async getCityOptions(type: AddressType): Promise<string[]> {
+    const selector = ADDRESS_FIELDS[type].city;
+    if (!selector) return [];
+    const options = this.page.locator(`${selector} option`);
+    const count = await options.count();
+    const values: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const text = await options.nth(i).textContent();
+      if (text) values.push(text.trim());
+    }
+    return values;
+  }
+
+  async getEditButtonText(type: AddressType): Promise<string> {
+    const btn = type === 'billing' ? this.editBillingButton : this.editShippingButton;
+    return btn.textContent().then((t) => t?.trim() ?? '');
+  }
+
+  async hasValidationError(): Promise<boolean> {
+    const errorInModal = this.page.locator('#address-modal .woocommerce-error, #address-modal .woocommerce-invalid');
+    if (await errorInModal.isVisible().catch(() => false)) return true;
+    const errorOutside = this.page.locator('.woocommerce-error, .woocommerce-invalid');
+    return errorOutside.isVisible().catch(() => false);
+  }
+
+  async isModalOpen(): Promise<boolean> {
+    return this.addressModal.isVisible();
   }
 }
