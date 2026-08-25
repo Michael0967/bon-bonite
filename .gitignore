@@ -150,3 +150,5 @@ playwright-report/
 .DS_Store
 
 docs
+# IDE
+.idea/

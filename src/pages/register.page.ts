@@ -1,7 +1,18 @@
 import type { Locator, Page } from '@playwright/test';
 import type { RegistrationData } from '../support/user';
 
+export type FieldKey =
+  | 'username'
+  | 'firstName'
+  | 'lastName'
+  | 'email'
+  | 'password'
+  | 'confirmPassword';
+
+export type MandatoryField = FieldKey | 'privacy';
+
 const SELECTORS = {
+  form: '#form-register',
   showRegisterToggle: '#show_register',
   usernameInput: '#reg_username',
   firstNameInput: '#first_name',
@@ -13,66 +24,102 @@ const SELECTORS = {
   errorMessage: '.woocommerce-error',
 } as const;
 
-const ACCESSIBLE_NAMES = {
+const TEXT = {
   submitButton: 'Registrarme',
   accountNavigation: 'Páginas de cuenta',
+  shortPasswordWarning: 'La contraseña debe tener al menos 8 caracteres.',
 } as const;
 
 export class RegisterPage {
   private readonly showRegisterToggle: Locator;
-  private readonly usernameInput: Locator;
-  private readonly firstNameInput: Locator;
-  private readonly lastNameInput: Locator;
-  private readonly emailInput: Locator;
-  private readonly passwordInput: Locator;
-  private readonly confirmPasswordInput: Locator;
+  private readonly fields: Record<FieldKey, Locator>;
   private readonly privacyPolicyCheckbox: Locator;
   private readonly submitButton: Locator;
 
+  readonly form: Locator;
   readonly accountNavigation: Locator;
   readonly errorMessage: Locator;
+  readonly shortPasswordWarning: Locator;
 
   constructor(private readonly page: Page) {
     this.showRegisterToggle = page.locator(SELECTORS.showRegisterToggle);
-    this.usernameInput = page.locator(SELECTORS.usernameInput);
-    this.firstNameInput = page.locator(SELECTORS.firstNameInput);
-    this.lastNameInput = page.locator(SELECTORS.lastNameInput);
-    this.emailInput = page.locator(SELECTORS.emailInput);
-    this.passwordInput = page.locator(SELECTORS.passwordInput);
-    this.confirmPasswordInput = page.locator(SELECTORS.confirmPasswordInput);
+    this.fields = {
+      username: page.locator(SELECTORS.usernameInput),
+      firstName: page.locator(SELECTORS.firstNameInput),
+      lastName: page.locator(SELECTORS.lastNameInput),
+      email: page.locator(SELECTORS.emailInput),
+      password: page.locator(SELECTORS.passwordInput),
+      confirmPassword: page.locator(SELECTORS.confirmPasswordInput),
+    };
     this.privacyPolicyCheckbox = page.locator(SELECTORS.privacyPolicyCheckbox);
-    this.submitButton = page.getByRole('button', { name: ACCESSIBLE_NAMES.submitButton });
+    this.submitButton = page.getByRole('button', { name: TEXT.submitButton });
 
-    this.accountNavigation = page.getByRole('navigation', {
-      name: ACCESSIBLE_NAMES.accountNavigation,
-    });
+    this.form = page.locator(SELECTORS.form);
+    this.accountNavigation = page.getByRole('navigation', { name: TEXT.accountNavigation });
     this.errorMessage = page.locator(SELECTORS.errorMessage);
+    this.shortPasswordWarning = page.getByText(TEXT.shortPasswordWarning);
   }
 
   greeting(firstName: string): Locator {
     return this.page.getByRole('heading', { name: new RegExp(`Hola,\\s*${firstName}\\.`) });
   }
 
+  async validationMessageFor(field: MandatoryField): Promise<string> {
+    const target = field === 'privacy' ? this.privacyPolicyCheckbox : this.fields[field];
+    return target.evaluate((node) => (node as HTMLInputElement).validationMessage);
+  }
+
   async open(): Promise<void> {
-    await this.page.goto('/mi-cuenta/');
+    const maxAttempts = 3;
+    let lastStatus: number | undefined;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const response =
+        attempt === 1
+          ? await this.page.goto('/mi-cuenta/')
+          : await this.page.reload({ waitUntil: 'load' });
+      lastStatus = response?.status();
+      const formAppeared = await this.showRegisterToggle
+        .waitFor({ state: 'visible', timeout: 3_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (formAppeared) return;
+      await new Promise((resolve) => setTimeout(resolve, 2_000 * attempt));
+    }
+    throw new Error(
+      `/mi-cuenta/ did not load correctly after ${maxAttempts} attempts (last HTTP status: ${lastStatus ?? 'unknown'}). The site WAF may be rate limiting this IP.`,
+    );
   }
 
   async revealForm(): Promise<void> {
     await this.showRegisterToggle.click();
-    await this.usernameInput.waitFor({ state: 'visible' });
+    await this.fields.username.waitFor({ state: 'visible' });
   }
 
-  async fill(data: RegistrationData): Promise<void> {
-    await this.usernameInput.fill(data.username);
-    await this.firstNameInput.fill(data.firstName);
-    await this.lastNameInput.fill(data.lastName);
-    await this.emailInput.fill(data.email);
-    await this.passwordInput.fill(data.password);
-    await this.confirmPasswordInput.fill(data.password);
-    await this.privacyPolicyCheckbox.check();
+  async fill(
+    fields: Partial<Record<FieldKey, string>> = {},
+    options: { acceptPrivacy?: boolean } = {},
+  ): Promise<void> {
+    for (const [key, value] of Object.entries(fields)) {
+      await this.fields[key as FieldKey].fill(value ?? '');
+    }
+    if (options.acceptPrivacy !== false) {
+      await this.privacyPolicyCheckbox.check();
+    }
   }
 
   async submit(): Promise<void> {
+    const pendingNativeValidation = await this.form.locator('input:invalid').count();
+    if (pendingNativeValidation > 0) return;
+
     await this.submitButton.click();
+    const outcomeSettled = await Promise.race([
+      this.errorMessage.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true),
+      this.shortPasswordWarning.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true),
+      this.accountNavigation.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true),
+    ]).catch(() => false);
+
+    if (!outcomeSettled) {
+      await this.submitButton.click();
+    }
   }
 }

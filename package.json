@@ -7,6 +7,9 @@
   "scripts": {
     "build": "rm -rf dist && tsc",
     "test": "npm run build && node --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js",
+    "test:chrome": "npm run build && BB_BROWSER=chromium node --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js --profile chrome",
+    "test:parallel": "npm run build && node --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js --profile parallel",
+    "test:chrome:parallel": "npm run build && BB_BROWSER=chromium node --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js --profile chrome-parallel",
     "report": "node scripts/generate-report.mjs"
   },
   "devDependencies": {

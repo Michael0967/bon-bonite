@@ -15,6 +15,8 @@ function resolveHeadless(): boolean {
 export const config = {
   baseUrl: process.env.BB_BASE_URL ?? 'https://www.bon-bonite.com',
   testPassword: process.env.BB_TEST_PASSWORD ?? '',
+  existingEmail: process.env.BB_EXISTING_EMAIL ?? '',
+  existingIdNumber: process.env.BB_EXISTING_ID_NUMBER ?? '',
   browser: resolveEngine(),
   headless: resolveHeadless(),
   viewport: { width: 1280, height: 720 },
