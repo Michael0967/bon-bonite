@@ -9,7 +9,7 @@ export interface RegistrationData {
   password: string;
 }
 
-function tenDigitNumber(): string {
+export function tenDigitNumber(): string {
   return String(randomInt(1_000_000_000, 10_000_000_000));
 }
 
