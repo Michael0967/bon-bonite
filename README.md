@@ -51,11 +51,15 @@ npm run typecheck     # check types without running
 
 ## Run a single feature or scenario
 
+Always use `--` before passing arguments to cucumber:
+
 ```bash
 npm run test:feature -- features/cart.feature                         # one feature
 npm run test:feature -- --name "Cart displays the added product"      # one scenario
 npm run test:feature -- features/login.feature --name "Successful"    # feature + name
 ```
+
+> **Note:** Without `--`, npm ignores the flags. `npm run test:single --name "..."` does NOT pass `--name` to cucumber.
 
 ## Tags
 
