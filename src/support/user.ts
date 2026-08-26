@@ -7,6 +7,7 @@ export interface RegistrationData {
   lastName: string;
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 export function tenDigitNumber(): string {
@@ -15,11 +16,13 @@ export function tenDigitNumber(): string {
 
 export function newRegistrationData(): RegistrationData {
   const username = tenDigitNumber();
+  const password = config.testPassword;
   return {
     username,
     firstName: 'Michael',
     lastName: 'Tester',
     email: `michael+${username}@yopmail.com`,
-    password: config.testPassword,
+    password,
+    confirmPassword: password,
   };
 }

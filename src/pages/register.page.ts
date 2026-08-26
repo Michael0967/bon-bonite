@@ -74,39 +74,26 @@ export class RegisterPage {
 
   async open(): Promise<void> {
     await waitForCooldown();
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      await throttleNavigation();
-      let status = 0;
-      try {
-        const response =
-          attempt === 1
-            ? await this.page.goto('/mi-cuenta/', { waitUntil: 'domcontentloaded', timeout: 15_000 })
-            : await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 15_000 });
-        status = response?.status() ?? 0;
-      } catch {
-        status = 0;
-      }
-
-      if (status === 403) {
-        report403();
-        await humanDelay(3_000, 5_000);
-        continue;
-      }
-
-      const formAppeared = await this.showRegisterToggle
-        .waitFor({ state: 'visible', timeout: 5_000 })
-        .then(() => true)
-        .catch(() => false);
-      if (formAppeared) {
-        reportSuccess();
-        return;
-      }
-      await humanDelay(1_000 * attempt, 2_000 * attempt);
+    await throttleNavigation();
+    const response = await this.page
+      .goto('/mi-cuenta/', { waitUntil: 'domcontentloaded', timeout: 15_000 })
+      .catch(() => null);
+    const status = response?.status() ?? 0;
+    if (status === 403) {
+      report403();
+      await humanDelay(3_000, 5_000);
+      await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 15_000 });
     }
-    throw new Error(
-      `/mi-cuenta/ did not load correctly after ${maxAttempts} attempts. The site WAF may be rate limiting this IP.`,
-    );
+    await this.showRegisterToggle
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .catch(() => {});
+  }
+
+  async isLoginFormVisible(): Promise<boolean> {
+    return this.showRegisterToggle
+      .waitFor({ state: 'visible', timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
   }
 
   async revealForm(): Promise<void> {

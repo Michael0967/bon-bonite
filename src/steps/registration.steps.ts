@@ -7,8 +7,19 @@ import { newRegistrationData, type RegistrationData } from '../support/user';
 Given(
   'a new visitor who does not have a store account yet',
   async function (this: BonboniteWorld): Promise<void> {
-    await registerPage(this).open();
-    await registerPage(this).revealForm();
+    const rp = registerPage(this);
+    await rp.open();
+
+    if (!(await rp.isLoginFormVisible())) {
+      const authPatterns = ['wordpress_logged_in', 'wordpress_sec', 'wp_woocommerce_session'];
+      const cookies = await this.page.context().cookies();
+      for (const c of cookies.filter((x) => authPatterns.some((p) => x.name.startsWith(p)))) {
+        await this.page.context().clearCookies({ name: c.name, domain: c.domain, path: c.path });
+      }
+      await rp.open();
+    }
+
+    await rp.revealForm();
   },
 );
 

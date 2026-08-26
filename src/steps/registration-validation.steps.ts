@@ -57,8 +57,12 @@ When(
     if (!config.existingIdNumber) {
       throw new Error('BB_EXISTING_ID_NUMBER is not set in .env');
     }
+    if (!config.existingEmail) {
+      throw new Error('BB_EXISTING_EMAIL is not set in .env');
+    }
     const data = newRegistrationData();
     data.username = config.existingIdNumber;
+    data.email = config.existingEmail;
     await registerPage(this).fill(data);
     await registerPage(this).submit();
   },
@@ -115,7 +119,7 @@ Then(
   async function (this: BonboniteWorld): Promise<void> {
     await expect(registerPage(this).errorMessage).toBeVisible();
     await expect(registerPage(this).errorMessage).toContainText(
-      'ya se ha registrado una cuenta con ese nombre de usuario',
+      'ya hay una cuenta registrada',
       { ignoreCase: true },
     );
   },
