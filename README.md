@@ -12,25 +12,35 @@ E2E automation framework for Bon-Bonite (Cucumber + Playwright + TypeScript).
 Create a `.env` file in the project root (never commit real values):
 
 ```env
-# Store under test
-BB_BASE_URL=<store-url>
-
-# Password used for every test registration
+BB_BASE_URL=https://www.bon-bonite.com
 BB_TEST_PASSWORD=<test-password>
-
-# Email that already has an account (used by the duplicate-email scenario)
+BB_NEW_PASSWORD=<new-password-for-password-change-test>
 BB_EXISTING_EMAIL=<existing-email>
-
-# ID number that already has an account (used by the duplicate-ID scenario)
 BB_EXISTING_ID_NUMBER=<existing-id-number>
+BB_HACKED_EMAIL=<email-to-test-uneditable-field>
+
+# Billing (used by edit-address tests)
+BB_BILLING_FIRST_NAME=<first-name>
+BB_BILLING_LAST_NAME=<last-name>
+BB_BILLING_PHONE=<phone>
+BB_BILLING_ADDRESS_1=<address>
+BB_BILLING_CITY=<city>
+
+# Shipping (used by edit-address tests)
+BB_SHIPPING_FIRST_NAME=<first-name>
+BB_SHIPPING_LAST_NAME=<last-name>
+BB_SHIPPING_ADDRESS_1=<address>
+BB_SHIPPING_CITY=<city>
 ```
 
 ## Commands
 
 ```bash
-npm test         # build + run the full suite
-npm run report   # generate and open the HTML report
-npm run build    # compile only
+npm test              # build + run the full suite
+npm run test:debug    # chromium, no retry — see real failures
+npm run test:single   # 1 worker, no retry — isolate bugs
+npm run report        # generate and open the HTML report
+npm run build         # compile only
 ```
 
 ## Run a single scenario or feature
@@ -38,6 +48,13 @@ npm run build    # compile only
 ```bash
 npm test -- --name "Email address already registered"   # one scenario by exact name
 npm test -- features/registration-validation.feature    # a whole feature file
+```
+
+## Tags
+
+```bash
+npm test -- --tags "@smoke"       # happy-path scenarios only
+npm test -- --tags "@regression"  # everything except registration success
 ```
 
 ## Browser
@@ -50,16 +67,55 @@ BB_BROWSER=firefox npm test
 
 ## Profiles
 
+| Profile | Workers | Retry | Use case |
+|---------|---------|-------|----------|
+| `default` | 2 | 2 | Production runs |
+| `no-retry` | 2 | 0 | Debug — see real failures |
+| `single` | 1 | 0 | Isolate one scenario |
+
 ```bash
-npx cucumber-js                       # default: sequential, current browser
-npx cucumber-js --profile parallel    # 3 workers
+npm test                     # default
+npm run test:debug           # no-retry + chromium
+npm run test:single          # single worker
 ```
 
-### Sequential vs parallel
+## Features
 
-Against production, run **sequentially** — which is exactly what `npm test` does (it uses the `default` profile, no `--parallel` flag). Do not add `--parallel` or use the `parallel` profile against production: multiple workers fire requests simultaneously and the site's WAF answers with 403s mid-run.
+```
+features/
+├── login.feature                    # 4 scenarios
+├── registration.feature             # 1 scenario
+├── registration-validation.feature  # 5 scenarios (Scenario Outline + 4)
+├── edit-profile.feature             # 10 scenarios
+├── edit-address.feature             # 11 scenarios
+├── product-page.feature             # 8 scenarios
+├── cart.feature                     # 6 scenarios
+└── checkout.feature                 # 5 scenarios
+```
 
-Use `--profile parallel` only against staging or when you specifically need to validate concurrency.
+## Architecture
+
+```
+src/
+├── pages/              # Page Objects (Playwright locators + actions)
+├── steps/              # Cucumber step definitions
+└── support/            # Hooks, config, helpers, anti-detection
+```
+
+### Anti-detection
+
+The site's WAF blocks automated browsers with 403 errors. The framework includes:
+
+- **Stealth plugin** — `playwright-extra` + `puppeteer-extra-plugin-stealth`
+- **User-agent rotation** — 10 realistic Chrome/Firefox agents
+- **Rate limiter** — throttles actions (3-8s) and navigations (5-15s)
+- **Circuit breaker** — detects 403 cascades, pauses all workers with exponential cooldown
+- **Human delays** — randomized typing (60-140ms/char) and click delays
+- **Anti-detection scripts** — injected via `Before` hook (`navigator.webdriver`, plugins, locale)
+
+### Session persistence
+
+Cookies are saved per-worker to `test-results/session-cookies-{workerId}.json` so logged-in state persists between scenarios within the same worker.
 
 ## Evidence
 
