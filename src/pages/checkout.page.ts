@@ -65,7 +65,7 @@ export class CheckoutPage {
         await humanDelay(3_000, 5_000);
         continue;
       }
-      const onEmptyCart = await this.page.locator('.cart-empty, .wc-empty-cart-message').isVisible().catch(() => false);
+      const onEmptyCart = await this.page.locator('h1:text("Tu carrito está vacío")').isVisible().catch(() => false);
       if (onEmptyCart) {
         reportSuccess();
         return;
@@ -81,7 +81,7 @@ export class CheckoutPage {
   }
 
   async isCartEmptyOnCheckout(): Promise<boolean> {
-    return this.page.locator('.cart-empty, .wc-empty-cart-message').isVisible().catch(() => false);
+    return this.page.locator('h1:text("Tu carrito está vacío")').isVisible().catch(() => false);
   }
 
   async hasCheckoutForm(): Promise<boolean> {

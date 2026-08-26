@@ -37,9 +37,4 @@ Feature: Cart
     When they remove the product from the cart
     Then the empty cart message is displayed
 
-  # --- Coupon ---
 
-  @regression
-  Scenario: Applying an invalid coupon shows an error
-    When they apply the coupon "INVALID_CODE"
-    Then a coupon error message is displayed

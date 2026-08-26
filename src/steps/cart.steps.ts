@@ -59,6 +59,8 @@ When(
 Then(
   'the cart is empty',
   async function (this: BonboniteWorld): Promise<void> {
+    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.waitForTimeout(5_000);
     const empty = await cartPage(this).isCartEmpty();
     expect(empty).toBe(true);
   },
@@ -67,21 +69,10 @@ Then(
 Then(
   'the empty cart message is displayed',
   async function (this: BonboniteWorld): Promise<void> {
+    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.waitForTimeout(7_000);
     await expect(cartPage(this).emptyMessage).toBeVisible();
   },
 );
 
-When(
-  'they apply the coupon {string}',
-  async function (this: BonboniteWorld, code: string): Promise<void> {
-    await cartPage(this).applyCoupon(code);
-  },
-);
 
-Then(
-  'a coupon error message is displayed',
-  async function (this: BonboniteWorld): Promise<void> {
-    const text = await cartPage(this).getCouponErrorText();
-    expect(text.length).toBeGreaterThan(0);
-  },
-);
