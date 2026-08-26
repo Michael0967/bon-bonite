@@ -11,8 +11,6 @@ Given(
   async function (this: BonboniteWorld): Promise<void> {
     const page = this.page;
     await page.goto('/mi-cuenta/edit-account/');
-    await page.waitForLoadState('networkidle').catch(() => {});
-
     const isLoggedIn = await page.locator('#username').count() === 0;
 
     if (isLoggedIn) {

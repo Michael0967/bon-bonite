@@ -64,8 +64,6 @@ export class CheckoutPage {
         await humanDelay(10_000, 20_000);
         continue;
       }
-      await this.page.waitForLoadState('networkidle').catch(() => {});
-
       const onEmptyCart = await this.page.locator('.cart-empty, .wc-empty-cart-message').isVisible().catch(() => false);
       if (onEmptyCart) return;
 
@@ -150,7 +148,6 @@ export class CheckoutPage {
     await humanDelay(500, 1_000);
     await humanClick(this.applyCouponButton);
     await humanDelay(3_000, 5_000);
-    await this.page.waitForLoadState('networkidle').catch(() => {});
   }
 
   async getCouponMessageText(): Promise<string> {

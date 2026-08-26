@@ -46,7 +46,6 @@ export class CartPage {
         await humanDelay(10_000, 20_000);
         continue;
       }
-      await this.page.waitForLoadState('networkidle').catch(() => {});
       const ready = await this.page
         .locator('.woocommerce-cart-form, .wc-empty-cart-message, .cart-empty')
         .first()
@@ -85,13 +84,11 @@ export class CartPage {
     const removeBtn = this.cartItems.nth(index).locator('.product-remove .remove, a.remove');
     await removeBtn.click();
     await humanDelay(3_000, 5_000);
-    await this.page.waitForLoadState('networkidle').catch(() => {});
   }
 
   async updateCart(): Promise<void> {
     await humanClick(this.updateCartButton);
     await humanDelay(3_000, 5_000);
-    await this.page.waitForLoadState('networkidle').catch(() => {});
   }
 
   async getSubtotalText(): Promise<string> {
@@ -107,7 +104,6 @@ export class CartPage {
     await humanDelay(500, 1_000);
     await humanClick(this.applyCouponButton);
     await humanDelay(3_000, 5_000);
-    await this.page.waitForLoadState('networkidle').catch(() => {});
   }
 
   async getCouponErrorText(): Promise<string> {
@@ -118,6 +114,5 @@ export class CartPage {
   async goToCheckout(): Promise<void> {
     await humanClick(this.proceedToCheckout);
     await this.page.waitForLoadState('domcontentloaded');
-    await this.page.waitForLoadState('networkidle').catch(() => {});
   }
 }

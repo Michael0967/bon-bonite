@@ -50,7 +50,6 @@ export class ProductPage {
         await humanDelay(10_000, 20_000);
         continue;
       }
-      await this.page.waitForLoadState('networkidle').catch(() => {});
       const ready = await this.title.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true).catch(() => false);
       if (ready) return;
       await humanDelay(5_000 * attempt, 8_000 * attempt);
@@ -125,8 +124,6 @@ export class ProductPage {
     ).catch(() => null);
     await this.addToCartButton.click();
     await responsePromise;
-    await humanDelay(3_000, 5_000);
-    await this.page.waitForLoadState('networkidle').catch(() => {});
   }
 
   async clickBuyNow(): Promise<void> {
@@ -135,7 +132,6 @@ export class ProductPage {
     await humanDelay(1_500, 3_000);
     await link.click();
     await this.page.waitForLoadState('domcontentloaded');
-    await this.page.waitForLoadState('networkidle').catch(() => {});
   }
 
   async getCartBadgeCount(): Promise<number> {

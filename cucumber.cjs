@@ -7,7 +7,7 @@ const shared = {
 module.exports = {
   default: {
     ...shared,
-    retry: 2,
+    retry: 0,
     parallel: 2,
   },
   'no-retry': {
