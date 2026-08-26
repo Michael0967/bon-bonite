@@ -86,7 +86,7 @@ Before(async function (this: BonboniteWorld): Promise<void> {
   this.page.setDefaultNavigationTimeout(config.navigationTimeout);
 
   this.page.on('response', (response: Response) => {
-    if (response.status() === 403) {
+    if (response.status() === 403 && response.request().isNavigationRequest()) {
       report403();
     }
   });

@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { humanDelay, humanClick } from '../support/humanize';
-import { report403 } from '../support/circuit-breaker';
+import { report403, reportSuccess, waitForCooldown } from '../support/circuit-breaker';
 import { throttleNavigation, throttleAction } from '../support/rate-limiter';
 
 export class ProductPage {
@@ -32,7 +32,8 @@ export class ProductPage {
 
   async open(slug: string): Promise<void> {
     this.productSlug = slug;
-    const maxAttempts = 4;
+    await waitForCooldown();
+    const maxAttempts = 3;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       await throttleNavigation();
       let status = 0;
@@ -47,12 +48,15 @@ export class ProductPage {
       }
       if (status === 403) {
         report403();
-        await humanDelay(10_000, 20_000);
+        await humanDelay(3_000, 5_000);
         continue;
       }
       const ready = await this.title.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true).catch(() => false);
-      if (ready) return;
-      await humanDelay(5_000 * attempt, 8_000 * attempt);
+      if (ready) {
+        reportSuccess();
+        return;
+      }
+      await humanDelay(1_000 * attempt, 2_000 * attempt);
     }
   }
 
@@ -98,9 +102,9 @@ export class ProductPage {
   async selectFirstVariation(): Promise<void> {
     const btn = this.variationButtons.first();
     await btn.scrollIntoViewIfNeeded();
-    await humanDelay(1_000, 2_000);
+    await humanDelay(300, 800);
     await btn.click();
-    await humanDelay(2_000, 4_000);
+    await humanDelay(500, 1_000);
   }
 
   async isAddToCartEnabled(): Promise<boolean> {
@@ -117,7 +121,7 @@ export class ProductPage {
 
   async clickAddToCart(): Promise<void> {
     await this.addToCartButton.scrollIntoViewIfNeeded();
-    await humanDelay(1_500, 3_000);
+    await humanDelay(500, 1_000);
     const responsePromise = this.page.waitForResponse(
       (resp) => resp.url().includes('cart') || resp.url().includes('add-to-cart'),
       { timeout: 20_000 },

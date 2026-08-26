@@ -2,8 +2,8 @@ const OPEN_STATE = 'OPEN';
 const HALF_OPEN_STATE = 'HALF_OPEN';
 const CLOSED_STATE = 'CLOSED';
 
-const BASE_COOLDOWN_MS = 30_000;
-const MAX_COOLDOWN_MS = 120_000;
+const BASE_COOLDOWN_MS = 10_000;
+const MAX_COOLDOWN_MS = 30_000;
 
 let state: string = CLOSED_STATE;
 let lastFailureAt = 0;

@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { humanDelay, humanClick, humanType } from '../support/humanize';
-import { report403 } from '../support/circuit-breaker';
+import { report403, reportSuccess, waitForCooldown } from '../support/circuit-breaker';
 import { throttleNavigation } from '../support/rate-limiter';
 
 const SELECTORS = {
@@ -39,7 +39,8 @@ export class LoginPage {
   }
 
   async open(): Promise<void> {
-    const maxAttempts = 5;
+    await waitForCooldown();
+    const maxAttempts = 3;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       await throttleNavigation();
       let status = 0;
@@ -55,7 +56,7 @@ export class LoginPage {
 
       if (status === 403) {
         report403();
-        await humanDelay(10_000, 20_000);
+        await humanDelay(3_000, 5_000);
         continue;
       }
 
@@ -63,8 +64,11 @@ export class LoginPage {
         .waitFor({ state: 'visible', timeout: 5_000 })
         .then(() => true)
         .catch(() => false);
-      if (formReady) return;
-      await humanDelay(5_000 * attempt, 8_000 * attempt);
+      if (formReady) {
+        reportSuccess();
+        return;
+      }
+      await humanDelay(1_000 * attempt, 2_000 * attempt);
     }
     throw new Error(
       `/mi-cuenta/ did not load correctly after ${maxAttempts} attempts. The site WAF may be rate limiting this IP.`,

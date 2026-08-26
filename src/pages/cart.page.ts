@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { humanDelay, humanClick, humanType } from '../support/humanize';
-import { report403 } from '../support/circuit-breaker';
+import { report403, reportSuccess, waitForCooldown } from '../support/circuit-breaker';
 import { throttleNavigation, throttleAction } from '../support/rate-limiter';
 
 export class CartPage {
@@ -28,7 +28,8 @@ export class CartPage {
   }
 
   async open(): Promise<void> {
-    const maxAttempts = 4;
+    await waitForCooldown();
+    const maxAttempts = 3;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       await throttleNavigation();
       let status = 0;
@@ -43,7 +44,7 @@ export class CartPage {
       }
       if (status === 403) {
         report403();
-        await humanDelay(10_000, 20_000);
+        await humanDelay(3_000, 5_000);
         continue;
       }
       const ready = await this.page
@@ -52,8 +53,11 @@ export class CartPage {
         .waitFor({ state: 'visible', timeout: 8_000 })
         .then(() => true)
         .catch(() => false);
-      if (ready) return;
-      await humanDelay(5_000 * attempt, 8_000 * attempt);
+      if (ready) {
+        reportSuccess();
+        return;
+      }
+      await humanDelay(1_000 * attempt, 2_000 * attempt);
     }
   }
 
@@ -83,12 +87,12 @@ export class CartPage {
     this.page.once('dialog', (dialog) => dialog.accept());
     const removeBtn = this.cartItems.nth(index).locator('.product-remove .remove, a.remove');
     await removeBtn.click();
-    await humanDelay(3_000, 5_000);
+    await humanDelay(1_000, 2_000);
   }
 
   async updateCart(): Promise<void> {
     await humanClick(this.updateCartButton);
-    await humanDelay(3_000, 5_000);
+    await humanDelay(1_000, 2_000);
   }
 
   async getSubtotalText(): Promise<string> {
@@ -101,9 +105,9 @@ export class CartPage {
 
   async applyCoupon(code: string): Promise<void> {
     await humanType(this.couponInput, code);
-    await humanDelay(500, 1_000);
+    await humanDelay(300, 600);
     await humanClick(this.applyCouponButton);
-    await humanDelay(3_000, 5_000);
+    await humanDelay(1_000, 2_000);
   }
 
   async getCouponErrorText(): Promise<string> {
