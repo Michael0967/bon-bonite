@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { humanDelay, humanClick, humanType } from '../support/humanize';
-import { waitForCooldown, report403 } from '../support/circuit-breaker';
+import { report403 } from '../support/circuit-breaker';
 import { throttleNavigation, throttleAction } from '../support/rate-limiter';
 
 const SELECTORS = {
@@ -132,18 +132,22 @@ export class EditAccountPage {
 
   async open(): Promise<void> {
     const maxAttempts = 5;
-    let lastStatus: number | undefined;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       await throttleNavigation();
-      const response =
-        attempt === 1
-          ? await this.page.goto('/mi-cuenta/edit-account/')
-          : await this.page.reload({ waitUntil: 'load' });
-      lastStatus = response?.status();
+      let status = 0;
+      try {
+        const response =
+          attempt === 1
+            ? await this.page.goto('/mi-cuenta/edit-account/', { waitUntil: 'domcontentloaded', timeout: 15_000 })
+            : await this.page.reload({ waitUntil: 'domcontentloaded', timeout: 15_000 });
+        status = response?.status() ?? 0;
+      } catch {
+        status = 0;
+      }
 
-      if (lastStatus === 403) {
+      if (status === 403) {
         report403();
-        await waitForCooldown();
+        await humanDelay(10_000, 20_000);
         continue;
       }
 
@@ -155,7 +159,7 @@ export class EditAccountPage {
       await humanDelay(5_000 * attempt, 8_000 * attempt);
     }
     throw new Error(
-      `/mi-cuenta/edit-account/ did not load after ${maxAttempts} attempts (last HTTP status: ${lastStatus ?? 'unknown'}).`,
+      `/mi-cuenta/edit-account/ did not load after ${maxAttempts} attempts.`,
     );
   }
 

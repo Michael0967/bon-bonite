@@ -2,12 +2,18 @@
 
 E2E automation framework for Bon-Bonite (Cucumber + Playwright + TypeScript).
 
+Runs TypeScript directly with `tsx` — no build step needed.
+
 ## Requirements
 
 - Node.js 24+
 - Browsers installed: `npx playwright install`
 
 ## Setup
+
+```bash
+npm install
+```
 
 Create a `.env` file in the project root (never commit real values):
 
@@ -36,18 +42,19 @@ BB_SHIPPING_CITY=<city>
 ## Commands
 
 ```bash
-npm test              # build + run the full suite
+npm test              # run the full suite
 npm run test:debug    # chromium, no retry — see real failures
 npm run test:single   # 1 worker, no retry — isolate bugs
 npm run report        # generate and open the HTML report
-npm run build         # compile only
+npm run typecheck     # check types without running
 ```
 
-## Run a single scenario or feature
+## Run a single feature or scenario
 
 ```bash
-npm test -- --name "Email address already registered"   # one scenario by exact name
-npm test -- features/registration-validation.feature    # a whole feature file
+npm run test:feature -- features/cart.feature                         # one feature
+npm run test:feature -- --name "Cart displays the added product"      # one scenario
+npm run test:feature -- features/login.feature --name "Successful"    # feature + name
 ```
 
 ## Tags
@@ -73,12 +80,6 @@ BB_BROWSER=firefox npm test
 | `no-retry` | 2 | 0 | Debug — see real failures |
 | `single` | 1 | 0 | Isolate one scenario |
 
-```bash
-npm test                     # default
-npm run test:debug           # no-retry + chromium
-npm run test:single          # single worker
-```
-
 ## Features
 
 ```
@@ -102,16 +103,21 @@ src/
 └── support/            # Hooks, config, helpers, anti-detection
 ```
 
+### Browser lifecycle
+
+The browser is launched once via `BeforeAll` and reused across all scenarios. Each scenario gets its own `BrowserContext` + `Page` (created in `Before`, destroyed in `After`). This keeps startup fast (milliseconds per scenario) while isolating state between tests.
+
 ### Anti-detection
 
 The site's WAF blocks automated browsers with 403 errors. The framework includes:
 
 - **Stealth plugin** — `playwright-extra` + `puppeteer-extra-plugin-stealth`
 - **User-agent rotation** — 10 realistic Chrome/Firefox agents
-- **Rate limiter** — throttles actions (3-8s) and navigations (5-15s)
-- **Circuit breaker** — detects 403 cascades, pauses all workers with exponential cooldown
-- **Human delays** — randomized typing (60-140ms/char) and click delays
+- **Rate limiter** — throttles actions (4-10s) and navigations (8-20s)
+- **Circuit breaker** — detects 403 cascades, reports failures
+- **Human delays** — randomized typing (70-150ms/char) and click delays
 - **Anti-detection scripts** — injected via `Before` hook (`navigator.webdriver`, plugins, locale)
+- **Resilient navigation** — all `page.goto` wrapped in try/catch with 15s timeout
 
 ### Session persistence
 

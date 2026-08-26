@@ -6,9 +6,11 @@
   "private": true,
   "scripts": {
     "build": "rm -rf dist && tsc",
-    "test": "npm run build && node --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js",
-    "test:debug": "npm run build && BB_BROWSER=chromium node --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js --profile no-retry",
-    "test:single": "npm run build && node --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js --profile single",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js",
+    "test:debug": "BB_BROWSER=chromium node --import tsx --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js --profile no-retry",
+    "test:single": "node --import tsx --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js --profile single",
+    "test:feature": "node --import tsx --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js --profile single",
     "report": "node scripts/generate-report.mjs"
   },
   "devDependencies": {
@@ -16,6 +18,7 @@
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.2.0",
     "multiple-cucumber-html-reporter": "^4.2.0",
+    "tsx": "^4.23.12",
     "typescript": "^5.9.3"
   },
   "dependencies": {

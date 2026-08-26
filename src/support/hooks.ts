@@ -11,7 +11,7 @@ import { closeBrowser, getBrowser } from './browser';
 import { config } from './config';
 import { loadSessionCookies, saveSessionCookies } from './session';
 import { getRandomUserAgent } from './user-agent';
-import { report403, waitForCooldown } from './circuit-breaker';
+import { report403 } from './circuit-breaker';
 import type { BonboniteWorld } from './world';
 import type { Response } from '@playwright/test';
 
@@ -49,8 +49,6 @@ const ANTI_DETECT_SCRIPTS = `
 `;
 
 Before(async function (this: BonboniteWorld): Promise<void> {
-  await waitForCooldown();
-
   const browser = await getBrowser();
   const userAgent = getRandomUserAgent();
 

@@ -8,7 +8,7 @@ Feature: Customer login
   Scenario: Empty credentials are not submitted
     Given a visitor on the login page
     When they try to log in without entering any credentials
-    Then the form is not submitted and asks them to complete the missing information
+    Then the login form is not submitted and asks for both credentials
 
   Scenario: Login with an incorrect password
     Given a registered customer on the login page

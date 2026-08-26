@@ -1,7 +1,7 @@
-const MIN_DELAY_MS = 3_000;
-const MAX_DELAY_MS = 8_000;
-const MIN_PAGE_DELAY_MS = 5_000;
-const MAX_PAGE_DELAY_MS = 15_000;
+const MIN_DELAY_MS = 4_000;
+const MAX_DELAY_MS = 10_000;
+const MIN_PAGE_DELAY_MS = 8_000;
+const MAX_PAGE_DELAY_MS = 20_000;
 
 let lastRequestAt = 0;
 

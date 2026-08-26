@@ -1,21 +1,8 @@
 import { Given, Then, When } from '@cucumber/cucumber';
 import { expect } from '../support/assertions';
 import { config } from '../support/config';
-import { productPage } from '../support/product-page';
 import { checkoutPage } from '../support/checkout-page';
 import type { BonboniteWorld } from '../support/world';
-
-const PRODUCT_SLUG = 'baleta-con-taches-en-cuero-capuccino';
-
-Given(
-  'a product is in the cart',
-  async function (this: BonboniteWorld): Promise<void> {
-    const pp = productPage(this);
-    await pp.open(PRODUCT_SLUG);
-    await pp.selectFirstVariation();
-    await pp.clickAddToCart();
-  },
-);
 
 Given(
   'they go to the checkout page',

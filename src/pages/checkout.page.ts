@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { humanDelay, humanClick, humanType } from '../support/humanize';
-import { waitForCooldown, report403 } from '../support/circuit-breaker';
+import { report403 } from '../support/circuit-breaker';
 import { throttleNavigation, throttleAction } from '../support/rate-limiter';
 
 export class CheckoutPage {
@@ -49,14 +49,19 @@ export class CheckoutPage {
     const maxAttempts = 4;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       await throttleNavigation();
-      const response = await this.page.goto('/finalizar-compra/', {
-        waitUntil: 'domcontentloaded',
-        timeout: 30_000,
-      });
-      const status = response?.status() ?? 0;
+      let status = 0;
+      try {
+        const response = await this.page.goto('/finalizar-compra/', {
+          waitUntil: 'domcontentloaded',
+          timeout: 15_000,
+        });
+        status = response?.status() ?? 0;
+      } catch {
+        status = 0;
+      }
       if (status === 403) {
         report403();
-        await waitForCooldown();
+        await humanDelay(10_000, 20_000);
         continue;
       }
       await this.page.waitForLoadState('networkidle').catch(() => {});

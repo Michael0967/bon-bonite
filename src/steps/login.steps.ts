@@ -27,7 +27,7 @@ When(
 );
 
 Then(
-  'the form is not submitted and asks them to complete the missing information',
+  'the login form is not submitted and asks for both credentials',
   async function (this: BonboniteWorld): Promise<void> {
     const usernameMsg = await loginPage(this).validationMessageFor('username');
     const passwordMsg = await loginPage(this).validationMessageFor('password');

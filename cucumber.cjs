@@ -1,5 +1,5 @@
 const shared = {
-  import: ['dist/**/*.js'],
+  import: ['src/**/*.ts'],
   format: ['summary', 'json:test-results/cucumber.json'],
   formatOptions: { snippetInterface: 'async-await' },
 };
