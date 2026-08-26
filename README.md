@@ -17,28 +17,30 @@ npm test
 
 ## Environment Variables
 
-Create a `.env` file in the project root. **Never commit real values.**
+Create a `.env` file in the project root.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `BB_TEST_PASSWORD` | Yes | Password for the test account |
-| `BB_EXISTING_EMAIL` | Yes | Email of existing test account |
-| `BB_EXISTING_ID_NUMBER` | Yes | ID number for the test account |
-| `BB_NEW_PASSWORD` | No | Password for password-change test |
-| `BB_HACKED_EMAIL` | No | Email for uneditable-field test |
-| `BB_BILLING_FIRST_NAME` | No | Billing first name (edit-address tests) |
-| `BB_BILLING_LAST_NAME` | No | Billing last name |
-| `BB_BILLING_PHONE` | No | Billing phone |
-| `BB_BILLING_ADDRESS_1` | No | Billing address |
-| `BB_BILLING_CITY` | No | Billing city |
-| `BB_SHIPPING_FIRST_NAME` | No | Shipping first name |
-| `BB_SHIPPING_LAST_NAME` | No | Shipping last name |
-| `BB_SHIPPING_ADDRESS_1` | No | Shipping address |
-| `BB_SHIPPING_CITY` | No | Shipping city |
-| `BB_BASE_URL` | No | Target URL (default: `https://www.bon-bonite.com`) |
-| `BB_BROWSER` | No | `chromium` / `firefox` / `webkit` (default: `chromium`) |
-| `BB_HEADLESS` | No | `true` / `false` (default: `true`, forced in CI) |
-| `BB_TRACE` | No | `on` to record Playwright traces |
+> **IMPORTANT: These are test/example values for the QA environment. They must NEVER be used in production or real scenarios.**
+
+| Variable | Required | Test Value | Description |
+|----------|----------|------------|-------------|
+| `BB_BASE_URL` | No | `https://www.bon-bonite.com` | Target URL |
+| `BB_BROWSER` | No | `chromium` | `chromium` / `firefox` / `webkit` |
+| `BB_HEADLESS` | No | `true` | `true` / `false` (forced `true` in CI) |
+| `BB_TRACE` | No | `off` | `on` to record Playwright traces |
+| `BB_TEST_PASSWORD` | Yes | `Doraymon0966` | Password for the test account |
+| `BB_NEW_PASSWORD` | No | `Doraymon096!` | Password for password-change test |
+| `BB_EXISTING_EMAIL` | Yes | `msrojas265@yopmail.com` | Email of existing test account |
+| `BB_HACKED_EMAIL` | No | `correo@yopmail.com` | Email for uneditable-field test |
+| `BB_EXISTING_ID_NUMBER` | Yes | `123456789101112131415161718` | ID number for the test account |
+| `BB_BILLING_FIRST_NAME` | No | `Michael` | Billing first name (edit-address tests) |
+| `BB_BILLING_LAST_NAME` | No | `Rojas` | Billing last name |
+| `BB_BILLING_PHONE` | No | `3101234567` | Billing phone |
+| `BB_BILLING_ADDRESS_1` | No | `Calle 123 #45-67` | Billing address |
+| `BB_BILLING_CITY` | No | `Bogotá` | Billing city |
+| `BB_SHIPPING_FIRST_NAME` | No | `Michael` | Shipping first name |
+| `BB_SHIPPING_LAST_NAME` | No | `Rojas` | Shipping last name |
+| `BB_SHIPPING_ADDRESS_1` | No | `Avenida 456 #78-90` | Shipping address |
+| `BB_SHIPPING_CITY` | No | `Bogotá` | Shipping city |
 
 ## Commands
 
