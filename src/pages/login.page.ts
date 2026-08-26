@@ -75,6 +75,28 @@ export class LoginPage {
     );
   }
 
+  async hasAuthCookies(): Promise<boolean> {
+    const cookies = await this.page.context().cookies();
+    const authPatterns = ['wordpress_logged_in', 'wordpress_sec', 'wp_woocommerce_session'];
+    return cookies.some((c) => authPatterns.some((p) => c.name.startsWith(p)));
+  }
+
+  async clearAuthCookies(): Promise<void> {
+    const context = this.page.context();
+    const cookies = await context.cookies();
+    const authPatterns = ['wordpress_logged_in', 'wordpress_sec', 'wp_woocommerce_session'];
+    const authCookies = cookies.filter((c) =>
+      authPatterns.some((p) => c.name.startsWith(p)),
+    );
+    for (const cookie of authCookies) {
+      await context.clearCookies({
+        name: cookie.name,
+        domain: cookie.domain,
+        path: cookie.path,
+      });
+    }
+  }
+
   async validationMessageFor(field: 'username' | 'password'): Promise<string> {
     const target = field === 'username' ? this.usernameInput : this.passwordInput;
     return target.evaluate((node) => (node as HTMLInputElement).validationMessage);

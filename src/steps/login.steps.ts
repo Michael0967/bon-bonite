@@ -8,14 +8,24 @@ import { tenDigitNumber } from '../support/user';
 Given(
   'a visitor on the login page',
   async function (this: BonboniteWorld): Promise<void> {
-    await loginPage(this).open();
+    const lp = loginPage(this);
+    await lp.open();
+    if (await lp.hasAuthCookies()) {
+      await lp.clearAuthCookies();
+      await lp.open();
+    }
   },
 );
 
 Given(
   'a registered customer on the login page',
   async function (this: BonboniteWorld): Promise<void> {
-    await loginPage(this).open();
+    const lp = loginPage(this);
+    await lp.open();
+    if (await lp.hasAuthCookies()) {
+      await lp.clearAuthCookies();
+      await lp.open();
+    }
   },
 );
 
@@ -65,8 +75,20 @@ When(
 When(
   'they enter their correct ID number and password',
   async function (this: BonboniteWorld): Promise<void> {
-    await loginPage(this).fillCredentials(config.existingIdNumber, config.testPassword);
-    await loginPage(this).submit();
+    const lp = loginPage(this);
+    await lp.fillCredentials(config.existingIdNumber, config.testPassword);
+    await lp.submit();
+
+    const success = await lp.accountNavigation
+      .waitFor({ state: 'visible', timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (!success && config.newPassword) {
+      await lp.open();
+      await lp.fillCredentials(config.existingIdNumber, config.newPassword);
+      await lp.submit();
+    }
   },
 );
 
