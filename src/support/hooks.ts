@@ -10,7 +10,10 @@ import { join } from 'node:path';
 import { closeBrowser, getBrowser } from './browser';
 import { config } from './config';
 import { loadSessionCookies, saveSessionCookies } from './session';
+import { getRandomUserAgent } from './user-agent';
+import { report403, waitForCooldown } from './circuit-breaker';
 import type { BonboniteWorld } from './world';
+import type { Response } from '@playwright/test';
 
 setDefaultTimeout(config.stepTimeout);
 
@@ -29,12 +32,43 @@ const cookieConsentValue = JSON.stringify({
   categories: '["unclassified","targeting","performance","functionality"]',
 });
 
+const ANTI_DETECT_SCRIPTS = `
+  Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+  Object.defineProperty(navigator, 'languages', { get: () => ['es-CO', 'es', 'en-US', 'en'] });
+  Object.defineProperty(navigator, 'platform', { get: () => 'MacIntel' });
+  Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+  Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+  window.chrome = { runtime: {} };
+  Object.defineProperty(navigator, 'plugins', {
+    get: () => [
+      { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
+      { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
+      { name: 'Native Client', filename: 'internal-nacl-plugin' },
+    ],
+  });
+`;
+
 Before(async function (this: BonboniteWorld): Promise<void> {
+  await waitForCooldown();
+
   const browser = await getBrowser();
+  const userAgent = getRandomUserAgent();
+
   this.context = await browser.newContext({
     baseURL: config.baseUrl,
     viewport: config.viewport,
+    userAgent,
+    locale: 'es-CO',
+    timezoneId: 'America/Bogota',
+    extraHTTPHeaders: {
+      'Accept-Language': 'es-CO,es;q=0.9,en-US;q=0.8,en;q=0.7',
+      'sec-ch-ua': '"Not A(Brand";v="99", "Google Chrome";v="120", "Chromium";v="120"',
+      'sec-ch-ua-mobile': '?0',
+      'sec-ch-ua-platform': '"macOS"',
+    },
   });
+
+  await this.context.addInitScript(ANTI_DETECT_SCRIPTS);
 
   const hasCookies = await loadSessionCookies(this.context);
 
@@ -52,6 +86,12 @@ Before(async function (this: BonboniteWorld): Promise<void> {
   this.page = await this.context.newPage();
   this.page.setDefaultTimeout(config.actionTimeout);
   this.page.setDefaultNavigationTimeout(config.navigationTimeout);
+
+  this.page.on('response', (response: Response) => {
+    if (response.status() === 403) {
+      report403();
+    }
+  });
 
   this.userData.hasSessionCookies = hasCookies;
 

@@ -1,5 +1,8 @@
 import type { Locator, Page } from '@playwright/test';
 import type { RegistrationData } from '../support/user';
+import { waitForCooldown, report403 } from '../support/circuit-breaker';
+import { throttleNavigation } from '../support/rate-limiter';
+import { humanDelay } from '../support/humanize';
 
 export type FieldKey =
   | 'username'
@@ -70,20 +73,28 @@ export class RegisterPage {
   }
 
   async open(): Promise<void> {
-    const maxAttempts = 3;
+    const maxAttempts = 5;
     let lastStatus: number | undefined;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await throttleNavigation();
       const response =
         attempt === 1
           ? await this.page.goto('/mi-cuenta/')
           : await this.page.reload({ waitUntil: 'load' });
       lastStatus = response?.status();
+
+      if (lastStatus === 403) {
+        report403();
+        await waitForCooldown();
+        continue;
+      }
+
       const formAppeared = await this.showRegisterToggle
-        .waitFor({ state: 'visible', timeout: 3_000 })
+        .waitFor({ state: 'visible', timeout: 5_000 })
         .then(() => true)
         .catch(() => false);
       if (formAppeared) return;
-      await new Promise((resolve) => setTimeout(resolve, 2_000 * attempt));
+      await humanDelay(5_000 * attempt, 8_000 * attempt);
     }
     throw new Error(
       `/mi-cuenta/ did not load correctly after ${maxAttempts} attempts (last HTTP status: ${lastStatus ?? 'unknown'}). The site WAF may be rate limiting this IP.`,
@@ -100,6 +111,8 @@ export class RegisterPage {
     options: { acceptPrivacy?: boolean } = {},
   ): Promise<void> {
     for (const [key, value] of Object.entries(fields)) {
+      await this.fields[key as FieldKey].fill('');
+      await new Promise((r) => setTimeout(r, 300));
       await this.fields[key as FieldKey].fill(value ?? '');
     }
     if (options.acceptPrivacy !== false) {
@@ -113,12 +126,13 @@ export class RegisterPage {
 
     await this.submitButton.click();
     const outcomeSettled = await Promise.race([
-      this.errorMessage.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true),
-      this.shortPasswordWarning.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true),
-      this.accountNavigation.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true),
+      this.errorMessage.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true),
+      this.shortPasswordWarning.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true),
+      this.accountNavigation.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true),
     ]).catch(() => false);
 
     if (!outcomeSettled) {
+      await humanDelay(3_000, 5_000);
       await this.submitButton.click();
     }
   }

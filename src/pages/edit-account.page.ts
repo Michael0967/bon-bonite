@@ -1,5 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { humanDelay, humanClick, humanType } from '../support/humanize';
+import { waitForCooldown, report403 } from '../support/circuit-breaker';
+import { throttleNavigation, throttleAction } from '../support/rate-limiter';
 
 const SELECTORS = {
   firstNameInput: '[name="first_name"]',
@@ -129,21 +131,28 @@ export class EditAccountPage {
   }
 
   async open(): Promise<void> {
-    const maxAttempts = 3;
+    const maxAttempts = 5;
     let lastStatus: number | undefined;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      await humanDelay(500, 1500);
+      await throttleNavigation();
       const response =
         attempt === 1
           ? await this.page.goto('/mi-cuenta/edit-account/')
           : await this.page.reload({ waitUntil: 'load' });
       lastStatus = response?.status();
+
+      if (lastStatus === 403) {
+        report403();
+        await waitForCooldown();
+        continue;
+      }
+
       const formReady = await this.updateInfoButton
-        .waitFor({ state: 'visible', timeout: 3_000 })
+        .waitFor({ state: 'visible', timeout: 5_000 })
         .then(() => true)
         .catch(() => false);
       if (formReady) return;
-      await humanDelay(2000 * attempt, 3000 * attempt);
+      await humanDelay(5_000 * attempt, 8_000 * attempt);
     }
     throw new Error(
       `/mi-cuenta/edit-account/ did not load after ${maxAttempts} attempts (last HTTP status: ${lastStatus ?? 'unknown'}).`,
@@ -162,18 +171,20 @@ export class EditAccountPage {
 
   async fillField(field: ProfileField, value: string): Promise<void> {
     const locator = this.fields[field];
-    await humanDelay(200, 500);
+    await throttleAction();
     const tag = await locator.evaluate((e) => e.tagName);
     if (tag === 'SELECT') {
       await locator.selectOption(value);
     } else {
+      await locator.fill('');
+      await humanDelay(300, 700);
       await humanType(locator, value);
     }
-    await humanDelay(200, 400);
+    await humanDelay(1_000, 2_000);
   }
 
   async clearField(field: ProfileField): Promise<void> {
-    await humanDelay(200, 500);
+    await throttleAction();
     await this.fields[field].fill('');
   }
 
@@ -190,12 +201,18 @@ export class EditAccountPage {
   }
 
   async fillPasswordForm(current: string, newPw: string, confirm: string): Promise<void> {
+    await this.currentPasswordInput.fill('');
+    await humanDelay(300, 700);
     await humanType(this.currentPasswordInput, current);
+    await humanDelay(1_500, 3_000);
+    await this.newPasswordInput.fill('');
     await humanDelay(300, 700);
     await humanType(this.newPasswordInput, newPw);
+    await humanDelay(1_500, 3_000);
+    await this.confirmPasswordInput.fill('');
     await humanDelay(300, 700);
     await humanType(this.confirmPasswordInput, confirm);
-    await humanDelay(200, 500);
+    await humanDelay(1_000, 2_500);
   }
 
   async submitInfo(): Promise<void> {
@@ -210,11 +227,11 @@ export class EditAccountPage {
     const btn = type === 'billing' ? this.editBillingButton : this.editShippingButton;
     await humanClick(btn);
     await this.addressModal.waitFor({ state: 'visible' });
-    await humanDelay(300, 600);
+    await throttleAction();
   }
 
   async closeAddressModal(): Promise<void> {
-    await humanDelay(200, 500);
+    await humanDelay(1_000, 2_000);
     await humanClick(this.closeModal);
     await this.addressModal.waitFor({ state: 'hidden' });
   }
@@ -224,16 +241,19 @@ export class EditAccountPage {
       const selector = ADDRESS_FIELDS[type][field];
       if (!selector) continue;
       const locator = this.page.locator(selector);
-      await humanDelay(200, 500);
+      await throttleAction();
       const tag = await locator.evaluate((e) => e.tagName);
       if (tag === 'SELECT') {
-        const optionExists = await locator.locator(`option[value="${value}"]`).count() > 0;
+        const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        const optionExists = await locator.locator(`option[value="${escaped}"]`).count() > 0;
         if (!optionExists) continue;
         await locator.selectOption(value);
       } else {
+        await locator.fill('');
+        await humanDelay(300, 700);
         await humanType(locator, value);
       }
-      await humanDelay(200, 400);
+      await humanDelay(1_000, 2_000);
     }
   }
 
@@ -244,7 +264,7 @@ export class EditAccountPage {
       const locator = this.page.locator(selector);
       const exists = await locator.count() > 0;
       if (!exists) continue;
-      await humanDelay(150, 400);
+      await throttleAction();
       const tag = await locator.evaluate((e) => e.tagName);
       if (tag === 'SELECT') {
         await locator.selectOption('');
@@ -262,7 +282,7 @@ export class EditAccountPage {
   async deleteAddress(type: AddressType): Promise<void> {
     const btn = type === 'billing' ? this.deleteBillingButton : this.deleteShippingButton;
     this.page.once('dialog', (dialog) => dialog.accept());
-    await humanDelay(500, 1000);
+    await humanDelay(2_000, 4_000);
     await btn.click();
   }
 
@@ -301,7 +321,12 @@ export class EditAccountPage {
     return btn.textContent().then((t) => t?.trim() ?? '');
   }
 
-  async hasValidationError(): Promise<boolean> {
+  async hasProfileValidationError(): Promise<boolean> {
+    const error = this.page.locator('.woocommerce-error, .woocommerce-invalid');
+    return error.isVisible().catch(() => false);
+  }
+
+  async hasAddressValidationError(): Promise<boolean> {
     const errorInModal = this.page.locator('#address-modal .woocommerce-error, #address-modal .woocommerce-invalid');
     if (await errorInModal.isVisible().catch(() => false)) return true;
     const errorOutside = this.page.locator('.woocommerce-error, .woocommerce-invalid');

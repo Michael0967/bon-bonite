@@ -1,5 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { humanDelay, humanClick, humanType } from '../support/humanize';
+import { waitForCooldown, report403 } from '../support/circuit-breaker';
+import { throttleNavigation } from '../support/rate-limiter';
 
 const SELECTORS = {
   usernameInput: '#username',
@@ -37,21 +39,28 @@ export class LoginPage {
   }
 
   async open(): Promise<void> {
-    const maxAttempts = 3;
+    const maxAttempts = 5;
     let lastStatus: number | undefined;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      await humanDelay(500, 1500);
+      await throttleNavigation();
       const response =
         attempt === 1
           ? await this.page.goto('/mi-cuenta/')
           : await this.page.reload({ waitUntil: 'load' });
       lastStatus = response?.status();
+
+      if (lastStatus === 403) {
+        report403();
+        await waitForCooldown();
+        continue;
+      }
+
       const formReady = await this.usernameInput
-        .waitFor({ state: 'visible', timeout: 3_000 })
+        .waitFor({ state: 'visible', timeout: 5_000 })
         .then(() => true)
         .catch(() => false);
       if (formReady) return;
-      await humanDelay(2000 * attempt, 3000 * attempt);
+      await humanDelay(5_000 * attempt, 8_000 * attempt);
     }
     throw new Error(
       `/mi-cuenta/ did not load correctly after ${maxAttempts} attempts (last HTTP status: ${lastStatus ?? 'unknown'}). The site WAF may be rate limiting this IP.`,
@@ -64,21 +73,25 @@ export class LoginPage {
   }
 
   async fillCredentials(idNumber: string, password: string): Promise<void> {
+    await this.usernameInput.fill('');
+    await humanDelay(500, 1_000);
     await humanType(this.usernameInput, idNumber);
-    await humanDelay(300, 700);
+    await humanDelay(1_500, 3_000);
+    await this.passwordInput.fill('');
+    await humanDelay(500, 1_000);
     await humanType(this.passwordInput, password);
-    await humanDelay(200, 500);
+    await humanDelay(1_000, 2_500);
   }
 
   async submit(): Promise<void> {
     await humanClick(this.submitButton);
     const outcomeSettled = await Promise.race([
-      this.errorMessage.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true),
-      this.accountNavigation.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true),
+      this.errorMessage.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true),
+      this.accountNavigation.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true),
     ]).catch(() => false);
 
     if (!outcomeSettled) {
-      await humanDelay(1000, 2000);
+      await humanDelay(3_000, 5_000);
       await humanClick(this.submitButton);
     }
   }

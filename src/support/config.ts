@@ -12,6 +12,18 @@ function resolveHeadless(): boolean {
   return process.env.BB_HEADLESS !== 'false';
 }
 
+const REQUIRED_VARS = ['BB_TEST_PASSWORD', 'BB_EXISTING_EMAIL', 'BB_EXISTING_ID_NUMBER'] as const;
+
+function validateConfig(): void {
+  const missing = REQUIRED_VARS.filter((v) => !process.env[v]);
+  if (missing.length > 0) {
+    console.error(`\n❌ Missing required environment variables in .env:\n   ${missing.join('\n   ')}\n`);
+    process.exit(1);
+  }
+}
+
+validateConfig();
+
 export const config = {
   baseUrl: process.env.BB_BASE_URL ?? 'https://www.bon-bonite.com',
   testPassword: process.env.BB_TEST_PASSWORD ?? '',

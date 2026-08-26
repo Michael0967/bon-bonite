@@ -1,40 +1,36 @@
 import { Given, Then, When } from '@cucumber/cucumber';
-import { LoginPage } from '../pages/login.page';
 import { expect } from '../support/assertions';
 import { config } from '../support/config';
+import { loginPage } from '../support/login-page';
 import type { BonboniteWorld } from '../support/world';
 import { tenDigitNumber } from '../support/user';
 
 Given(
   'a visitor on the login page',
   async function (this: BonboniteWorld): Promise<void> {
-    const loginPage = new LoginPage(this.page);
-    await loginPage.open();
+    await loginPage(this).open();
   },
 );
 
 Given(
   'a registered customer on the login page',
   async function (this: BonboniteWorld): Promise<void> {
-    const loginPage = new LoginPage(this.page);
-    await loginPage.open();
+    await loginPage(this).open();
   },
 );
 
 When(
   'they try to log in without entering any credentials',
   async function (this: BonboniteWorld): Promise<void> {
-    const loginPage = new LoginPage(this.page);
-    await loginPage.submit();
+    await loginPage(this).submit();
   },
 );
 
 Then(
-  'the browser blocks the request and asks for both fields',
+  'the form is not submitted and asks them to complete the missing information',
   async function (this: BonboniteWorld): Promise<void> {
-    const loginPage = new LoginPage(this.page);
-    const usernameMsg = await loginPage.validationMessageFor('username');
-    const passwordMsg = await loginPage.validationMessageFor('password');
+    const usernameMsg = await loginPage(this).validationMessageFor('username');
+    const passwordMsg = await loginPage(this).validationMessageFor('password');
     expect(usernameMsg).toBeTruthy();
     expect(passwordMsg).toBeTruthy();
   },
@@ -43,18 +39,16 @@ Then(
 When(
   'they enter their ID number and an incorrect password',
   async function (this: BonboniteWorld): Promise<void> {
-    const loginPage = new LoginPage(this.page);
-    await loginPage.fillCredentials(config.existingIdNumber, 'WrongPass999');
-    await loginPage.submit();
+    await loginPage(this).fillCredentials(config.existingIdNumber, 'WrongPass999');
+    await loginPage(this).submit();
   },
 );
 
 Then(
   'the system informs them that the username or password is invalid',
   async function (this: BonboniteWorld): Promise<void> {
-    const loginPage = new LoginPage(this.page);
-    await expect(loginPage.errorMessage).toBeVisible();
-    await expect(loginPage.errorMessage).toContainText(
+    await expect(loginPage(this).errorMessage).toBeVisible();
+    await expect(loginPage(this).errorMessage).toContainText(
       'Nombre de usuario o contraseña inválidos',
     );
   },
@@ -63,26 +57,23 @@ Then(
 When(
   'they enter an unregistered ID number and a password',
   async function (this: BonboniteWorld): Promise<void> {
-    const loginPage = new LoginPage(this.page);
-    await loginPage.fillCredentials(tenDigitNumber(), config.testPassword);
-    await loginPage.submit();
+    await loginPage(this).fillCredentials(tenDigitNumber(), config.testPassword);
+    await loginPage(this).submit();
   },
 );
 
 When(
   'they enter their correct ID number and password',
   async function (this: BonboniteWorld): Promise<void> {
-    const loginPage = new LoginPage(this.page);
-    await loginPage.fillCredentials(config.existingIdNumber, config.testPassword);
-    await loginPage.submit();
+    await loginPage(this).fillCredentials(config.existingIdNumber, config.testPassword);
+    await loginPage(this).submit();
   },
 );
 
 Then(
   'the system grants access and displays their account area',
   async function (this: BonboniteWorld): Promise<void> {
-    const loginPage = new LoginPage(this.page);
-    await expect(loginPage.accountNavigation).toBeVisible();
-    await expect(loginPage.errorMessage).toHaveCount(0);
+    await expect(loginPage(this).accountNavigation).toBeVisible();
+    await expect(loginPage(this).errorMessage).toHaveCount(0);
   },
 );

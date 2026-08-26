@@ -77,7 +77,7 @@ Then(
     const currentUrl = await shopPage(this).getProductPageUrl();
     const expectedUrl = await shopPage(this).getExpectedProductUrl();
     expect(currentUrl).toContain('/producto/');
-    expect(currentUrl).toContain(expectedUrl.replace(/^https?:\/\/[^/]+/, ''));
+    expect(currentUrl).toContain(expectedUrl);
   },
 );
 

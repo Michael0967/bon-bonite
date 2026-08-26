@@ -1,5 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { humanDelay, humanClick } from '../support/humanize';
+import { waitForCooldown, report403 } from '../support/circuit-breaker';
+import { throttleNavigation, throttleAction } from '../support/rate-limiter';
 
 export class ShoppingPage {
   private readonly page: Page;
@@ -15,26 +17,32 @@ export class ShoppingPage {
   }
 
   async warmUp(): Promise<void> {
-    const maxAttempts = 2;
+    const maxAttempts = 4;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await throttleNavigation();
       const response = await this.page.goto('/', {
         waitUntil: 'domcontentloaded',
-        timeout: 20_000,
+        timeout: 30_000,
       });
       const status = response?.status() ?? 0;
+      if (status === 403) {
+        report403();
+        await waitForCooldown();
+        continue;
+      }
       if (status !== 403) {
         await this.page.waitForLoadState('networkidle').catch(() => {});
         return;
       }
-      await humanDelay(1500 * attempt, 2500 * attempt);
+      await humanDelay(5_000 * attempt, 10_000 * attempt);
     }
   }
 
   async openCategory(): Promise<void> {
-    const maxAttempts = 2;
+    const maxAttempts = 4;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       if (attempt > 1) {
-        await humanDelay(2000, 3000);
+        await humanDelay(5_000, 10_000);
       }
 
       const menuLink = this.page.locator('#menu-item-10 > a');
@@ -46,26 +54,31 @@ export class ShoppingPage {
           const text = await parentItems.nth(i).textContent().catch(() => '');
           if (text?.includes('Zapatos')) {
             await parentItems.nth(i).hover();
-            await humanDelay(400, 800);
+            await humanDelay(1_500, 3_000);
             break;
           }
         }
       }
 
       await menuLink.scrollIntoViewIfNeeded().catch(() => {});
-      await humanDelay(200, 400);
+      await humanDelay(1_000, 2_000);
 
       try {
-        await menuLink.click({ timeout: 8_000 });
+        await menuLink.click({ timeout: 10_000 });
       } catch {
-        await this.page.goto('/categoria-producto/zapatos-mujer/', {
+        const response = await this.page.goto('/categoria-producto/zapatos-mujer/', {
           waitUntil: 'domcontentloaded',
-          timeout: 20_000,
+          timeout: 30_000,
         });
+        if (response?.status() === 403) {
+          report403();
+          await waitForCooldown();
+          continue;
+        }
       }
 
       const loaded = await this.page
-        .waitForURL(/categoria-producto\/zapatos-mujer/, { timeout: 10_000 })
+        .waitForURL(/categoria-producto\/zapatos-mujer/, { timeout: 12_000 })
         .then(async () => {
           await this.page.waitForLoadState('domcontentloaded');
           return true;
@@ -76,15 +89,15 @@ export class ShoppingPage {
         const hasProducts = await this.page
           .locator('.product-wrapper-with-variation')
           .first()
-          .waitFor({ state: 'visible', timeout: 8_000 })
+          .waitFor({ state: 'visible', timeout: 10_000 })
           .then(() => true)
           .catch(() => false);
         if (hasProducts) return;
       }
 
       if (attempt < maxAttempts) {
-        await this.page.goto('/', { waitUntil: 'domcontentloaded', timeout: 20_000 });
-        await humanDelay(500, 1000);
+        await this.page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+        await humanDelay(2_000, 4_000);
       }
     }
 
@@ -104,20 +117,24 @@ export class ShoppingPage {
     this.productHref = `/producto/${slug}/`;
 
     const productLink = this.page.locator(`a[href*="${slug}"]`).first();
-    const visible = await productLink.isVisible({ timeout: 5_000 }).catch(() => false);
+    const visible = await productLink.isVisible({ timeout: 8_000 }).catch(() => false);
 
     if (!visible) {
-      await this.page.goto(this.productHref, {
+      const response = await this.page.goto(this.productHref, {
         waitUntil: 'domcontentloaded',
         timeout: 30_000,
       });
+      if (response?.status() === 403) {
+        report403();
+        await waitForCooldown();
+      }
       await this.page.waitForLoadState('networkidle').catch(() => {});
       this.mainImage = this.page.locator('.woocommerce-product-gallery__image img, .product img').first();
       return;
     }
 
     await productLink.scrollIntoViewIfNeeded();
-    await humanDelay(200, 400);
+    await humanDelay(1_000, 2_000);
 
     this.productHref = await productLink.getAttribute('href') ?? this.productHref;
     this.productCard = productLink.locator('..');
@@ -130,7 +147,7 @@ export class ShoppingPage {
   async hoverProductCard(): Promise<void> {
     this.mainImageSrcBefore = await this.mainImage.getAttribute('src') ?? '';
     await this.productCard.hover();
-    await humanDelay(800, 1500);
+    await humanDelay(2_000, 4_000);
   }
 
   async isColorThumbnailStripVisible(): Promise<boolean> {
@@ -150,9 +167,9 @@ export class ShoppingPage {
   async clickColorThumbnail(index: number): Promise<void> {
     const thumb = this.colorThumbnails.nth(index);
     await thumb.scrollIntoViewIfNeeded();
-    await humanDelay(200, 400);
+    await humanDelay(1_000, 2_000);
     await thumb.locator('a').first().click({ force: true });
-    await humanDelay(1500, 2500);
+    await humanDelay(3_000, 5_000);
   }
 
   async didMainImageChange(): Promise<boolean> {
@@ -168,16 +185,20 @@ export class ShoppingPage {
       return;
     }
     const link = this.page.locator(`a[href*="${this.productHref}"]`).first();
-    const visible = await link.isVisible({ timeout: 5_000 }).catch(() => false);
+    const visible = await link.isVisible({ timeout: 8_000 }).catch(() => false);
     if (!visible) {
-      await this.page.goto(this.productHref, {
+      const response = await this.page.goto(this.productHref, {
         waitUntil: 'domcontentloaded',
         timeout: 30_000,
       });
+      if (response?.status() === 403) {
+        report403();
+        await waitForCooldown();
+      }
       await this.page.waitForLoadState('networkidle').catch(() => {});
       return;
     }
-    await link.click({ timeout: 10_000 });
+    await link.click({ timeout: 12_000 });
     await this.page.waitForLoadState('domcontentloaded');
   }
 
@@ -226,15 +247,15 @@ export class ShoppingPage {
   async selectFirstVariant(): Promise<void> {
     const btn = this.page.locator('.variation-button').first();
     await btn.scrollIntoViewIfNeeded();
-    await humanDelay(200, 400);
+    await humanDelay(1_000, 2_000);
     await btn.click();
-    await humanDelay(800, 1500);
+    await humanDelay(2_000, 4_000);
   }
 
   async clickBuyNow(): Promise<void> {
     const link = this.page.locator('.buy_now_link, .buy_now_button a').first();
     await link.scrollIntoViewIfNeeded();
-    await humanDelay(300, 600);
+    await humanDelay(1_500, 3_000);
     await link.click();
     await this.page.waitForLoadState('domcontentloaded');
     await this.page.waitForLoadState('networkidle').catch(() => {});
@@ -243,16 +264,16 @@ export class ShoppingPage {
   async clickAddToCart(): Promise<void> {
     const btn = this.page.locator('.single_add_to_cart_button');
     await btn.scrollIntoViewIfNeeded();
-    await humanDelay(300, 600);
+    await humanDelay(1_500, 3_000);
 
     const responsePromise = this.page.waitForResponse(
       (resp) => resp.url().includes('cart') || resp.url().includes('add-to-cart'),
-      { timeout: 15_000 },
+      { timeout: 20_000 },
     ).catch(() => null);
 
     await btn.click();
     await responsePromise;
-    await humanDelay(1500, 2500);
+    await humanDelay(3_000, 5_000);
     await this.page.waitForLoadState('networkidle').catch(() => {});
   }
 

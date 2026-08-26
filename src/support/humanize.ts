@@ -1,18 +1,16 @@
-export function humanDelay(minMs = 300, maxMs = 1200): Promise<void> {
+export function humanDelay(minMs = 2_000, maxMs = 6_000): Promise<void> {
   const ms = Math.floor(Math.random() * (maxMs - minMs)) + minMs;
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function humanType(locator: import('@playwright/test').Locator, text: string): Promise<void> {
   await locator.click();
-  await humanDelay(200, 500);
-  for (const char of text) {
-    await locator.type(char, { delay: Math.floor(Math.random() * 80) + 40 });
-  }
+  await humanDelay(1_500, 3_000);
+  await locator.pressSequentially(text, { delay: Math.floor(Math.random() * 80) + 60 });
 }
 
 export async function humanClick(locator: import('@playwright/test').Locator): Promise<void> {
-  await humanDelay(300, 800);
+  await humanDelay(2_000, 5_000);
   await locator.click();
-  await humanDelay(200, 600);
+  await humanDelay(1_500, 3_000);
 }

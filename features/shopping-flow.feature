@@ -1,50 +1,46 @@
-Feature: Product card hover interaction
+@smoke @regression
+Feature: Shopping flow
 
   As a store visitor
-  I want to hover over a product card and see color variants
-  so that I can quickly switch between product variations.
+  I want to browse products, see variants, and add them to my cart
+  so that I can purchase items I like.
 
-  Scenario: Hover on product card reveals color thumbnails and clicking changes the image
+  Background:
     Given a visitor on the Bon Bonite homepage
     When they navigate to the Zapatos category
     And they find the product card for "Baleta con taches en cuero capuccino"
-    And they hover over that product card
+
+  @regression
+  Scenario: Hover on product card reveals color thumbnails and clicking changes the image
+    When they hover over that product card
     Then the color thumbnail strip becomes visible
     When they click the second color thumbnail
     Then the main product image changes to the selected variant
 
+  @regression
   Scenario: Clicking on product card redirects to the product page
-    Given a visitor on the Bon Bonite homepage
-    When they navigate to the Zapatos category
-    And they find the product card for "Baleta con taches en cuero capuccino"
-    And they click on the product card link
+    When they click on the product card link
     Then they are redirected to the product page
 
+  @regression
   Scenario: Product page variant and add-to-cart button state
-    Given a visitor on the Bon Bonite homepage
-    When they navigate to the Zapatos category
-    And they find the product card for "Baleta con taches en cuero capuccino"
-    And they click on the product card link
+    When they click on the product card link
     Then they are redirected to the product page
     And the product page displays its title
     And the add to cart button state matches the variant selection rules
 
+  @regression
   Scenario: Comprar Ahora redirects to cart with the product
-    Given a visitor on the Bon Bonite homepage
-    When they navigate to the Zapatos category
-    And they find the product card for "Baleta con taches en cuero capuccino"
-    And they click on the product card link
+    When they click on the product card link
     Then they are redirected to the product page
     When they select the first available variant
     And they click on Comprar Ahora
     Then they are redirected to the cart page
     And the cart badge displays 1
 
+  @regression
   Scenario: Anadir al carrito adds product and shows success message
-    Given a visitor on the Bon Bonite homepage
-    When they navigate to the Zapatos category
-    And they find the product card for "Baleta con taches en cuero capuccino"
-    And they click on the product card link
+    When they click on the product card link
     Then they are redirected to the product page
     When they select the first available variant
     And they click on Anadir al carrito

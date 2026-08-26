@@ -1,3 +1,4 @@
+@smoke @regression
 Feature: Registration form validation
 
   As a store visitor
@@ -21,18 +22,22 @@ Feature: Registration form validation
       | "password confirmation"|
       | "privacy consent"      |
 
+  @regression
   Scenario: Email address already registered
     When they try to sign up with an email address that is already registered
     Then the system explains that this email address is already registered
 
+  @regression
   Scenario: ID number already registered
     When they try to sign up with an ID number that is already registered
     Then the system explains that this ID number is already registered
 
+  @regression
   Scenario: Password shorter than the minimum
     When they try to sign up with a password shorter than 8 characters
     Then the form is not submitted and warns that the password must have at least 8 characters
 
+  @regression
   Scenario: Password with the minimum length
     When they sign up with a password of exactly 8 characters
     Then their account is created and their session starts automatically

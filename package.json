@@ -10,6 +10,7 @@
     "test:chrome": "npm run build && BB_BROWSER=chromium node --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js --profile chrome",
     "test:parallel": "npm run build && node --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js --profile parallel",
     "test:chrome:parallel": "npm run build && BB_BROWSER=chromium node --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js --profile chrome-parallel",
+    "test:sequential": "npm run build && node --env-file-if-exists=.env ./node_modules/@cucumber/cucumber/bin/cucumber.js --profile sequential",
     "report": "node scripts/generate-report.mjs"
   },
   "devDependencies": {
@@ -18,5 +19,9 @@
     "@types/node": "^26.2.0",
     "multiple-cucumber-html-reporter": "^4.2.0",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   }
 }
