@@ -10,6 +10,20 @@ Given(
   },
 );
 
+Given(
+  'they go to the cart page',
+  async function (this: BonboniteWorld): Promise<void> {
+    await cartPage(this).open();
+  },
+);
+
+When(
+  'they click Finalizar compra',
+  async function (this: BonboniteWorld): Promise<void> {
+    await cartPage(this).goToCheckout();
+  },
+);
+
 Then(
   'the cart is not empty',
   async function (this: BonboniteWorld): Promise<void> {

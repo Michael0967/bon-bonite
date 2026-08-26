@@ -13,14 +13,15 @@ export class CheckoutPage {
   readonly billingCity: Locator;
   readonly billingState: Locator;
   readonly billingPostcode: Locator;
+  readonly billingDocumentType: Locator;
+  readonly billingGender: Locator;
+  readonly billingCountry: Locator;
   readonly orderReview: Locator;
   readonly orderTotal: Locator;
-  readonly paymentMethods: Locator;
   readonly placeOrderButton: Locator;
-  readonly couponToggle: Locator;
-  readonly couponInput: Locator;
-  readonly applyCouponButton: Locator;
-  readonly termsCheckbox: Locator;
+  readonly continueButton: Locator;
+  readonly cartSummary: Locator;
+  readonly orderDetails: Locator;
 
   private readonly page: Page;
 
@@ -35,14 +36,14 @@ export class CheckoutPage {
     this.billingCity = page.locator('#billing_city').first();
     this.billingState = page.locator('#billing_state').first();
     this.billingPostcode = page.locator('#billing_postcode').first();
-    this.orderReview = page.locator('#order_review').first();
-    this.orderTotal = page.locator('#order_total .amount, .order-total .amount').first();
-    this.paymentMethods = page.locator('ul.payment_methods').first();
+    this.billingDocumentType = page.locator('#billing_tipo_documento').first();
+    this.billingGender = page.locator('#billing_gender').first();
+    this.billingCountry = page.locator('#billing_country').first();
     this.placeOrderButton = page.locator('#place_order').first();
-    this.couponToggle = page.locator('.woocommerce-form-coupon-toggle').first();
-    this.couponInput = page.locator('.woocommerce-form-coupon #coupon_code, #coupon_code').first();
-    this.applyCouponButton = page.locator('.woocommerce-form-coupon button[name="apply_coupon"], button[name="apply_coupon"]').first();
-    this.termsCheckbox = page.locator('#terms').first();
+    this.continueButton = page.locator('.resume-cta[data-step="step2"]').first();
+    this.cartSummary = page.locator('.step.active .order-review-wrapper').first();
+    this.orderDetails = page.locator('.order_details').first();
+    this.orderTotal = page.locator('.order-total-row .amount').first();
   }
 
   async open(): Promise<void> {
@@ -65,12 +66,6 @@ export class CheckoutPage {
         await humanDelay(3_000, 5_000);
         continue;
       }
-      const onEmptyCart = await this.page.locator('h1:text("Tu carrito está vacío")').isVisible().catch(() => false);
-      if (onEmptyCart) {
-        reportSuccess();
-        return;
-      }
-
       const ready = await this.checkoutForm.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true).catch(() => false);
       if (ready) {
         reportSuccess();
@@ -80,22 +75,31 @@ export class CheckoutPage {
     }
   }
 
-  async isCartEmptyOnCheckout(): Promise<boolean> {
-    return this.page.locator('h1:text("Tu carrito está vacío")').isVisible().catch(() => false);
-  }
-
   async hasCheckoutForm(): Promise<boolean> {
     return this.checkoutForm.isVisible().catch(() => false);
   }
 
-  async fillBillingField(field: 'firstName' | 'lastName' | 'email' | 'phone' | 'address1' | 'city' | 'postcode', value: string): Promise<void> {
+  async clickContinue(): Promise<void> {
+    await this.continueButton.scrollIntoViewIfNeeded();
+    await humanDelay(500, 1_000);
+    await Promise.all([
+      this.page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => {}),
+      humanClick(this.continueButton),
+    ]);
+    await humanDelay(2_000, 4_000);
+  }
+
+  async hasBillingForm(): Promise<boolean> {
+    return this.billingFirstName.isVisible().catch(() => false);
+  }
+
+  async fillBillingField(field: 'firstName' | 'lastName' | 'email' | 'phone' | 'address1' | 'postcode', value: string): Promise<void> {
     const map: Record<string, Locator> = {
       firstName: this.billingFirstName,
       lastName: this.billingLastName,
       email: this.billingEmail,
       phone: this.billingPhone,
       address1: this.billingAddress1,
-      city: this.billingCity,
       postcode: this.billingPostcode,
     };
     const locator = map[field];
@@ -104,17 +108,11 @@ export class CheckoutPage {
     await locator.fill('');
     await humanDelay(300, 700);
     await humanType(locator, value);
-    await humanDelay(1_000, 2_000);
-  }
-
-  async fillBillingState(value: string): Promise<void> {
-    await throttleAction();
-    await this.billingState.selectOption(value).catch(() => {});
-    await humanDelay(1_000, 2_000);
+    await humanDelay(500, 1_000);
   }
 
   async getOrderItems(): Promise<string[]> {
-    const items = this.page.locator('.woocommerce-checkout-review-order-table .product-name');
+    const items = this.page.locator('.step.active .order-review-body .product-name');
     const count = await items.count();
     const names: string[] = [];
     for (let i = 0; i < count; i++) {
@@ -128,37 +126,81 @@ export class CheckoutPage {
     return this.orderTotal.textContent().then((t) => t?.trim() ?? '');
   }
 
-  async hasPaymentMethods(): Promise<boolean> {
-    return this.paymentMethods.isVisible().catch(() => false);
-  }
-
-  async getPaymentMethodCount(): Promise<number> {
-    return this.page.locator('ul.payment_methods > li.payment_method').count();
-  }
-
-  async isWompiVisible(): Promise<boolean> {
-    const wompi = this.page.locator('input[name="payment_method"][value*="wompi"], .payment_method_wompi');
-    return wompi.isVisible().catch(() => false);
-  }
-
   async getSubtotalText(): Promise<string> {
-    const el = this.page.locator('.cart-subtotal .amount, .woocommerce-checkout-review-order-table .cart-subtotal .amount').first();
+    const el = this.page.locator('.step.active .totals-row .amount').first();
     return el.textContent().then((t) => t?.trim() ?? '');
   }
 
-  async applyCoupon(code: string): Promise<void> {
-    if (await this.couponToggle.isVisible().catch(() => false)) {
-      await humanClick(this.couponToggle);
-      await humanDelay(500, 1_000);
-    }
-    await humanType(this.couponInput, code);
-    await humanDelay(500, 1_000);
-    await humanClick(this.applyCouponButton);
-    await humanDelay(3_000, 5_000);
+  async hasPlaceOrderButton(): Promise<boolean> {
+    return this.placeOrderButton.isVisible().catch(() => false);
   }
 
-  async getCouponMessageText(): Promise<string> {
-    const msg = this.page.locator('.woocommerce-error, .woocommerce-message').first();
-    return msg.textContent().then((t) => t?.trim() ?? '');
+  async acceptTerms(): Promise<void> {
+    const checkbox = this.page.locator('#terms').first();
+    await checkbox.scrollIntoViewIfNeeded();
+    await checkbox.check({ force: true });
+    await humanDelay(500, 1_000);
+  }
+
+  async clickPlaceOrder(): Promise<void> {
+    await this.placeOrderButton.scrollIntoViewIfNeeded();
+    await humanDelay(500, 1_000);
+    await Promise.all([
+      this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30_000 }).catch(() => {}),
+      this.placeOrderButton.click({ force: true }),
+    ]);
+    await humanDelay(5_000, 8_000);
+  }
+
+  async isOrderConfirmationVisible(): Promise<boolean> {
+    return this.orderDetails.isVisible().catch(() => false);
+  }
+
+  async getOrderNumber(): Promise<string> {
+    const el = this.page.locator('.order_details .order strong').first();
+    return el.textContent().then((t) => t?.trim() ?? '');
+  }
+
+  async getOrderTotalText(): Promise<string> {
+    return this.orderTotal.textContent().then((t) => t?.trim() ?? '');
+  }
+
+  async getOrderPaymentMethod(): Promise<string> {
+    const el = this.page.locator('.order_details .method strong').first();
+    return el.textContent().then((t) => t?.trim() ?? '');
+  }
+
+  async getConfirmationTotalText(): Promise<string> {
+    const el = this.page.locator('.order_details .total strong').first();
+    return el.textContent().then((t) => t?.trim() ?? '');
+  }
+
+  async hasLoginForm(): Promise<boolean> {
+    return this.page.locator('form.woocommerce-form-login #username').isVisible().catch(() => false);
+  }
+
+  async loginInCheckout(idNumber: string, password: string): Promise<boolean> {
+    await this.page.evaluate(({ id, pw }) => {
+      const form = document.querySelector('form.woocommerce-form-login') as HTMLFormElement | null;
+      if (!form) return;
+      const usernameEl = form.querySelector('#username') as HTMLInputElement | null;
+      const passwordEl = form.querySelector('#password') as HTMLInputElement | null;
+      if (usernameEl) { usernameEl.value = id; usernameEl.dispatchEvent(new Event('input', { bubbles: true })); }
+      if (passwordEl) { passwordEl.value = pw; passwordEl.dispatchEvent(new Event('input', { bubbles: true })); }
+    }, { id: idNumber, pw: password });
+    await humanDelay(500, 1_000);
+    await Promise.all([
+      this.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => {}),
+      this.page.evaluate(() => {
+        const form = document.querySelector('form.woocommerce-form-login') as HTMLFormElement | null;
+        form?.requestSubmit();
+      }),
+    ]);
+    await humanDelay(3_000, 5_000);
+    return this.page.url().includes('step=2');
+  }
+
+  async hasOrderConfirmation(): Promise<boolean> {
+    return this.orderDetails.isVisible().catch(() => false);
   }
 }
